@@ -597,10 +597,8 @@ int send_entryinfo_via_linenum(int sockfd, long linenum,
   return 0;
 }
 
-/* return 1 -> error
- * return 0 -> sent prefix0
- * return 2 -> sent prefix1
- */
+
+
 int send_entryinfo(int sockfd, const char *fname,
 		   const char *prefix0, const char *prefix1,
 		   int reset_mtime)
@@ -621,14 +619,14 @@ int send_entryinfo(int sockfd, const char *fname,
       perror("@send_entryinfo(): strncpy() failed");
       return 1;
     }
-    msg[strlen(prefix1)] = 0;   rv = 2;
+    msg[strlen(prefix1)] = 0;   rv = PREFIX1_SENT;
 
   } else {
     if (strncpy(msg, prefix0, strlen(prefix0)) == NULL) {
       perror("@send_entryinfo(): strncpy() failed");
       return 1;
     }
-    msg[strlen(prefix0)] = 0;   rv = 0;
+    msg[strlen(prefix0)] = 0;   rv = PREFIX0_SENT;
   }
   
   if (get_rela_path(fname, rela_fname)) {

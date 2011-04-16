@@ -23,6 +23,8 @@
 #define _FILES_H_
 
 #define _XOPEN_SOURCE 500
+//#define _USE_XOPEN_EXTENDED
+
 #include "diff.h"
 #include "fss.h"
 #include "wrap-sha1.h"
@@ -39,6 +41,10 @@ extern int errno;
 #ifndef MAX_PATH_LEN
 #define MAX_PATH_LEN 1024
 #endif
+
+#define PREFIX0_SENT 0
+#define PREFIX1_SENT 2
+#define PREFIX2_SENT 3
 
 #define FSS_DIR ".fss"
 

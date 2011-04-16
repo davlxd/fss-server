@@ -252,7 +252,7 @@ static int status_WAIT_MSG_CLI_REQ_SHA1_FSS(int i)
 {
   printf(">>>> ---> WAIT_MSG_CLI_REQ_SHA1_FSS\n");
   char buf[MAX_PATH_LEN];
-  int rv, rvv;
+  int rv;
   
   if ((rv = receive_line(i, buf, MAX_PATH_LEN)) == 1) {
     fprintf(stderr,
@@ -341,16 +341,17 @@ static int status_WAIT_XXX(int i)
 	      "@status_WAIT_XXX(): send_entryinfo_via_linenum() failed\n");
       return 1;
       
-    } else if (rvv == 0) {
+    } else if (rvv == PREFIX0_SENT) {
     clients[i].line_num = linenum;
     clients[i].status = WAIT_MSG_CLI_REQ_FILE;
 
-    } else if (rvv == 2) {
+    } else if (rvv == PREFIX1_SENT) {
       clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM;
     }
 
 
   } else if (strncmp(buf, DIR_INFO, strlen(DIR_INFO)) == 0) {
+
     char *token;
     token = strtok(buf+strlen(DIR_INFO), "\n");
     if (create_dir(token)) {
@@ -368,6 +369,7 @@ static int status_WAIT_XXX(int i)
     clients[i].status = WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO;
       
   } else if (strncmp(buf, FILE_INFO, strlen(FILE_INFO)) == 0) {
+
     lock = i;
     if (set_fileinfo(i, buf+strlen(FILE_INFO))) {
       fprintf(stderr,
@@ -393,6 +395,7 @@ static int status_WAIT_XXX(int i)
     printf(">>>> SER_REQ_FILE sent\n"); 
 
   } else if (strncmp(buf, DEL_IDX_INFO, strlen(DEL_IDX_INFO)) == 0) {
+
     lock = i;
     if (set_fileinfo(i, buf+strlen(DEL_IDX_INFO))) {
       fprintf(stderr, "@status_WAIT_XXX(): set_fileinfo() failed\n");
@@ -498,11 +501,11 @@ static int status_WAIT_MSG_DONE_OR_LINE_NUM(int i)
 	      "send_entryinfo_via_linenum() failed\n");
       return 1;
 
-    } else if (rvv == 0) {
+    } else if (rvv == PREFIX0_SENT) {
       clients[i].line_num = linenum;
       clients[i].status = WAIT_MSG_CLI_REQ_FILE;
 
-    } else if (rvv == 2) {
+    } else if (rvv == PREFIX1_SENT) {
       clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM;
     }
 
