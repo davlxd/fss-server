@@ -22,17 +22,31 @@
 #ifndef _F_SS_H_
 #define _F_SS_H_
 
-/* FILE_NAME contains all monitored files's full pathname
- * and should be defined here because wrap-inotify.c/h
- * need to escape it
- */
-#ifndef FSS_DIR
-#define FSS_DIR ".fss"
-#endif
+#define _XOPEN_SOURCE 500
 
-#ifndef INCLUDE_HIDDEN
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <ftw.h>
+
+#define FSS_DIR ".fss"
+
 #define INCLUDE_HIDDEN 0
-#endif
+
+#define MAX_PATH_LEN 1024
+#define BUF_LEN 4096
+
+#define PORT 3375
+#define PORT_STR "3375"
 
 
 

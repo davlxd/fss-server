@@ -22,33 +22,12 @@
 #ifndef _PARAMS_H_
 #define _PARAMS_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <ctype.h>
-#include <errno.h>
-#include <sys/stat.h>
 
-#ifndef PARAM_LEN
 #define PARAM_LEN 16
-#endif
-#ifndef VALUE_LEN
+
 #define VALUE_LEN 1024
-#endif
 
-extern int errno;
-
-static const char *conf_fname = "fss.conf";
-static FILE *conf_fp;
 
 int get_param_value(const char *k, char *v);
-static int open_file(FILE **conf_fp);
-static int skip_space(FILE *conf_fp);
-static int skip_comment(FILE *conf_fp);
-static int parse(FILE *conf_fp, const char *k, char *v);
-static int parse_param(FILE *, char c,  const char *k, char *v);
-
-
 
 #endif

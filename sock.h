@@ -22,18 +22,6 @@
 #ifndef _SOCK_H_
 #define _SOCK_H_
 
-#include <stdio.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <netdb.h>
-
-#ifndef PORT
-#define PORT 3375
-#endif
-
-#ifndef PORT_STR
-#define PORT_STR "3375"
-#endif
 
 #ifndef LISTENQ
 #define LISTENQ 5

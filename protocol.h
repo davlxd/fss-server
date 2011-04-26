@@ -22,27 +22,7 @@
 #ifndef _FSS_PROTOCOL_H_
 #define _FSS_PROTOCOL_H_
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <sys/select.h>
-#include <sys/time.h>
-#include "client.h"
-#include "files.h"
-
-extern int errno;
-
 #define CLIENTS_NUM 10
-
-#ifndef BUF_LEN
-#define BUF_LEN 4096
-#endif
-
-#ifndef MAX_PATH_LEN
-#define MAX_PATH_LEN 1024
-#endif
-
 
 #define CLI_REQ_SHA1_FSS "A"
 #define CLI_REQ_FILE "B"
@@ -59,7 +39,20 @@ extern int errno;
 #define DIR_INFO "N"
 
 
-/* server*/
+// status 
+enum {
+  WAIT_MSG_CLI_REQ_SHA1_FSS = 2,
+  // it waits MSG_DONE, LINE_NUM..., FILE_INFO..., DEL_INDEX_SZ...
+  WAIT_XXX = 4,
+  WAIT_MSG_CLI_REQ_FILE = 6,
+  WAIT_MSG_DONE_OR_LINE_NUM = 8,
+  WAIT_FILE = 10,
+  WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO = 12,
+  WAIT_DEL_IDX_INFO_OR_ENTRY_INFO = 14,
+  WAIT_DEL_IDX = 16
+
+};
+
 #define WAIT_MSG_CLI_REQ_SHA1_FSS 2
 #define WAIT_XXX 4 // it waits MSG_DONE, LINE_NUM..., FILE_INFO..., DEL_INDEX_SZ...
 #define WAIT_MSG_CLI_REQ_FILE 6
@@ -69,30 +62,7 @@ extern int errno;
 #define WAIT_DEL_IDX_INFO_OR_ENTRY_INFO 14
 #define WAIT_DEL_IDX 16
 
-// read-write lock, -1 means release, >=0 refers to clinet index
-static int lock;
-static client clients[CLIENTS_NUM];
-static fd_set allset;
-static int maxfd;
-static int maxi;
-
-
-
 int server_polling(int *listenfd);
-static int handle_listenfd(int *listenfd);
-static int reset_client(int i);
-static int handle_client(int i);
-static int status_WAIT_MSG_CLI_REQ_SHA1_FSS(int i);
-static int status_WAIT_XXX(int i);
-static int status_WAIT_MSG_CLI_REQ_FILE(int i);
-static int status_WAIT_MSG_DONE_OR_LINE_NUM(int i);
-static int status_WAIT_FILE(int i);
-static int status_WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO(int i);
-static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i);
-static int status_WAIT_DEL_IDX(int i);
-static int receive_line(int i, char *text, int len);
-static int set_fileinfo(int i, char *buf);
 
-static int broadcast(int except_index);
 
 #endif

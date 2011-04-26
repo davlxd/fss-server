@@ -63,6 +63,8 @@ int main(int argc, char **argv)
 	    "@main(): server_polling() failed\n");
     return 1;
   }
+
+  return 0;
 }
     
   

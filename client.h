@@ -22,13 +22,7 @@
 #ifndef _FSS_CLIENT_H_
 #define _FSS_CLIENT_H_
 
-#include <stdio.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-
-#ifndef MAX_PATH_LEN
-#define MAX_PATH_LEN 1024
-#endif
+#include "fss.h"
 
 typedef struct client
 {

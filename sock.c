@@ -19,6 +19,7 @@
  * along with fss.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "fss.h"
 #include "sock.h"
 
 int fss_listen(int *listenfd)

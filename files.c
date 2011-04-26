@@ -18,8 +18,51 @@
  * You should have received a copy of the GNU General Public License
  * along with fss.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#include "diff.h"
+#include "wrap-sha1.h"
 #include "files.h"
+
+extern int errno;
+
+
+/* rootpath do not end with '/' */
+static char rootpath[MAX_PATH_LEN];
+
+// for send_file() use
+static off_t size_to_send;
+
+/* these 2 global via called by call back function write_in() */
+static FILE *fname_fss;
+static FILE *temp_sha1_fss;
+
+static int fn(const char *fname, const struct stat *sb, int flag,
+	      struct FTW *ftwbuf);
+/* the following funcions do explict path connecions
+ * assume fpath is big enough */
+
+static int get_fss_dir(char *);
+static int get_xxx(char *, const char *);
+static int get_fname_fss(char *);
+static int get_sha1_fss(char *);
+static int get_temp_sha1_fss(char *);
+static int get_del_index(char *);
+
+
+// make sure path0 is large enough
+static int connect_path(char *, const char *);
+
+// without any check, make sure it is called after connect_path()
+static int disconnect_path(char *, const char *);
+
+static int create_fss_dir(const char*);
+static int write_in(const char*, const struct stat*, int, struct FTW*);
+static int get_line(const char*, long, char*, int);
+
+/* rela_path do not start with '/' */
+static int get_rela_path(const char *, char *);
+
+
+
 
 int set_rootpath(const char *root_path)
 {
@@ -945,31 +988,13 @@ static int get_sha1_fss(char *fpath)
   return get_xxx(fpath, SHA1_FSS);
 }
 
-static int get_temp_sha1_fss(char * fpath)
+static int get_temp_sha1_fss(char *fpath)
 {
 
   return get_xxx(fpath, TEMP_SHA1_FSS);
 }
 
-static int get_remote_sha1_fss(char * fpath)
-{
-
-  return get_xxx(fpath, REMOTE_SHA1_FSS);
-}
-
-static int get_diff_remote_index(char * fpath)
-{
-
-  return get_xxx(fpath, DIFF_REMOTE_INDEX);
-}
-
-static int get_diff_local_index(char * fpath)
-{
-
-  return get_xxx(fpath, DIFF_LOCAL_INDEX);
-}
-
-static int get_del_index(char * fpath)
+static int get_del_index(char *fpath)
 {
   return get_xxx(fpath, DEL_INDEX);
 }

@@ -19,7 +19,21 @@
  * along with fss.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "fss.h"
 #include "params.h"
+
+extern int errno;
+
+
+static const char *conf_fname = "fss.conf";
+static FILE *conf_fp;
+
+static int open_file(FILE **conf_fp);
+static int skip_space(FILE *conf_fp);
+static int skip_comment(FILE *conf_fp);
+static int parse(FILE *conf_fp, const char *k, char *v);
+static int parse_param(FILE *, char c,  const char *k, char *v);
+
 
 /*
  * k is key, pass in
@@ -101,7 +115,6 @@ static int parse(FILE *file, const char *k, char *v)
 	  break;
 	default:
 	  if (1 == (rv = parse_param(file, c, k, v))){
-	    //fsslog("params.c parse(): fail to parse_param()");
 	    fprintf(stderr, "@parse(): fail to parse_param()\n");
 	    return 0;
 	  } else if (!rv) 
@@ -133,8 +146,6 @@ static int parse_param(FILE *file, char c, const char *k, char *v)
 	{
 	case '=':
 	  if (end == 0) {
-	    //fsslog("params.c parse_param(): fail to parse conf file, "
-	    // "empty param name");
 	    fprintf(stderr, "@parse_param(): fail to parse conf file, "\
 		    "empty param name\n");
 	      return 1;
@@ -144,15 +155,11 @@ static int parse_param(FILE *file, char c, const char *k, char *v)
 	  break;
 
 	case '\n':
-	  //fsslog("params.c parse_param(): fail to parse conf file, "
-	  //"param should in ONE line, i=%d,end=%d", i, end);
 	  fprintf(stderr, "@parse_param(): fail to parse conf file, "\
 		  "param should in single line\n");
 	  return 1;
 
 	case '\0':
-	  //fsslog("params.c parse_param(): fail to parse conf file, "\
-	  // "EOF should not in parameter");
 	  fprintf(stderr, "@parse_param(): fail to parse conf file, "\
 		  "EOF should not in param\n");
 	  return 1;
@@ -204,8 +211,6 @@ static int parse_param(FILE *file, char c, const char *k, char *v)
     printf("KEY:%s -> VALUE:NULL\n", k);
   }  else {
     if (NULL == strncpy(v, value, strlen(value))) {
-      //fsslog("params.c parse_param(): fail to strncpy() to value, %s",
-      //strerror(errno));
       perror("@parse_param(): fail to strncpy to *v");
       return 1;
     }

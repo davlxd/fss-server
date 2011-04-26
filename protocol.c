@@ -18,18 +18,42 @@
  * You should have received a copy of the GNU General Public License
  * along with fss.  If not, see <http://www.gnu.org/licenses/>.
  */
-
+#include "fss.h"
+#include "client.h"
+#include "files.h"
 #include "protocol.h"
 
+extern int errno;
+
+// read-write lock, -1 means release, >=0 refers to clinet index
+static int lock;
+static client clients[CLIENTS_NUM];
+static fd_set allset;
+static int maxfd;
+static int maxi;
+
+static int handle_listenfd(int *listenfd);
+static int reset_client(int i);
+static int handle_client(int i);
+static int status_WAIT_MSG_CLI_REQ_SHA1_FSS(int i);
+static int status_WAIT_XXX(int i);
+static int status_WAIT_MSG_CLI_REQ_FILE(int i);
+static int status_WAIT_MSG_DONE_OR_LINE_NUM(int i);
+static int status_WAIT_FILE(int i);
+static int status_WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO(int i);
+static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i);
+static int status_WAIT_DEL_IDX(int i);
+static int receive_line(int i, char *text, int len);
+static int set_fileinfo(int i, char *buf);
+
+static int broadcast(int except_index);
 
 int server_polling(int *listenfd)
 {
-
   int i;
-  int n, len;
+  int n;
   fd_set rset;
 
-  char buf[BUF_LEN];
 
   if (remove_del_index_file()) {
     fprintf(stderr, "@server_polling(): remove_del_index_file() failed\n");
@@ -321,7 +345,7 @@ static int status_WAIT_XXX(int i)
 
     if (broadcast(i)) {
       fprintf(stderr,
-	      "@status_WAIT_XXX(): broadcast failed\n", i);
+	      "@status_WAIT_XXX(): broadcast[%d] failed\n", i);
       return 1;
     }
 
@@ -434,7 +458,7 @@ static int status_WAIT_MSG_CLI_REQ_FILE(int i)
 {
   printf(">>>> ---> WAIT_MSG_CLI_REQ_FILE\n");
 
-  int rv, rvv;
+  int rv;
   char buf[MAX_PATH_LEN];
   
   if ((rv = receive_line(i, buf, MAX_PATH_LEN)) == 1) {
@@ -637,8 +661,7 @@ static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i)
 {
   printf(">>>> ---> IN status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO\n");
   
-  int rv, rvv;
-  off_t del_index_size;
+  int rv;
   char buf[MAX_PATH_LEN];
   
   if ((rv = receive_line(i, buf, MAX_PATH_LEN)) == 1) {
