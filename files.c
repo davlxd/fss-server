@@ -32,8 +32,8 @@ static char rootpath[MAX_PATH_LEN];
 static off_t size_to_send;
 
 /* these 2 global via called by call back function write_in() */
-static FILE *fname_fss;
-static FILE *temp_sha1_fss;
+static FILE *finfo_fss;
+static FILE *temp_hash_fss;
 
 static int fn(const char *fname, const struct stat *sb, int flag,
 	      struct FTW *ftwbuf);
@@ -42,9 +42,9 @@ static int fn(const char *fname, const struct stat *sb, int flag,
 
 static int get_fss_dir(char *);
 static int get_xxx(char *, const char *);
-static int get_fname_fss(char *);
-static int get_sha1_fss(char *);
-static int get_temp_sha1_fss(char *);
+static int get_finfo_fss(char *);
+static int get_hash_fss(char *);
+static int get_temp_hash_fss(char *);
 static int get_del_index(char *);
 
 
@@ -96,16 +96,16 @@ int update_files()
   printf(">>>>> IN update_files()\n"); fflush(stdout);
   struct stat statbuf;
   char fullpath[MAX_PATH_LEN];
-  char fullpath0[MAX_PATH_LEN]; //temp.sha1.fss
-  char fullpath1[MAX_PATH_LEN]; //sha1.fss
+  char fullpath0[MAX_PATH_LEN]; //temp.hash.fss
+  char fullpath1[MAX_PATH_LEN]; //hash.fss
 
-  if (get_temp_sha1_fss(fullpath0)) {
-    fprintf(stderr, "@update_files(): get_temp_sha1_fss() failed\n");
+  if (get_temp_hash_fss(fullpath0)) {
+    fprintf(stderr, "@update_files(): get_temp_hash_fss() failed\n");
     return 1;
   }
 
-  if (get_sha1_fss(fullpath1)) {
-    fprintf(stderr, "@update_files(): get_sha1_fss() failed\n");
+  if (get_hash_fss(fullpath1)) {
+    fprintf(stderr, "@update_files(): get_hash_fss() failed\n");
     return 1;
   }
 
@@ -127,32 +127,32 @@ int update_files()
     return 1;
   }
   
-  if (connect_path(fullpath, FNAME_FSS)) {
+  if (connect_path(fullpath, FINFO_FSS)) {
     fprintf(stderr,
 	    "@update_files(): connect_path(%s, %s) fails\n",
-	    fullpath, FNAME_FSS);
+	    fullpath, FINFO_FSS);
     return 1;
   }
   
-  if (!(fname_fss = fopen(fullpath, "w+"))) {
+  if (!(finfo_fss = fopen(fullpath, "w+"))) {
     fprintf(stderr, "@update_files(): fopen(%s) fails\n", fullpath);
     return 1;
   }
 
-  disconnect_path(fullpath, FNAME_FSS);
+  disconnect_path(fullpath, FINFO_FSS);
   
-  if (connect_path(fullpath, TEMP_SHA1_FSS)) {
+  if (connect_path(fullpath, TEMP_HASH_FSS)) {
     fprintf(stderr,
 	    "@update_files(): connect_path(%s, %s) fails\n",
-	    fullpath, TEMP_SHA1_FSS);
+	    fullpath, TEMP_HASH_FSS);
     return 1;
   }
 
-  if (!(temp_sha1_fss = fopen(fullpath, "w+"))) {
+  if (!(temp_hash_fss = fopen(fullpath, "w+"))) {
     fprintf(stderr, "@update_files(): fopen(%s) fails\n", fullpath);
     return 1;
   }
-  disconnect_path(fullpath, TEMP_SHA1_FSS);
+  disconnect_path(fullpath, TEMP_HASH_FSS);
   disconnect_path(fullpath, FSS_DIR);
 
 
@@ -161,23 +161,23 @@ int update_files()
     return 1;
   }
 
-  if (0 != fflush(fname_fss)) {
-    perror("@update_files(): fflush(fname_fss) fails.");
+  if (0 != fflush(finfo_fss)) {
+    perror("@update_files(): fflush(finfo_fss) fails.");
     return 1;
   }
   
-  if (0 != fclose(fname_fss)) {
-    perror("@update_files(): fclose(fname_fss) fails.");
+  if (0 != fclose(finfo_fss)) {
+    perror("@update_files(): fclose(finfo_fss) fails.");
     return 1;
   }
 
-  if (0 != fflush(temp_sha1_fss)) {
-    perror("@update_files(): fflush(sha1_fss) fails.");
+  if (0 != fflush(temp_hash_fss)) {
+    perror("@update_files(): fflush(hash_fss) fails.");
     return 1;
   }
   
-  if (0 != fclose(temp_sha1_fss)) {
-    perror("@update_files(): fclose(sha1_fss) fails.");
+  if (0 != fclose(temp_hash_fss)) {
+    perror("@update_files(): fclose(hash_fss) fails.");
     return 1;
   }
   
@@ -273,7 +273,7 @@ static int write_in(const char *path, const struct stat *sb,
 		    int flag, struct FTW *fb)
 {
   int rv;
-  /* if (EOF == fputc(0, sha1_fss)) { */
+  /* if (EOF == fputc(0, hash_fss)) { */
   /*   perror("@write_in(): fputc NULL fails."); */
   /*   return 1; */
   /* } */
@@ -297,22 +297,22 @@ static int write_in(const char *path, const struct stat *sb,
 
   if (rv == 0) {
   
-    if (EOF == fputs(path, fname_fss)) {
+    if (EOF == fputs(path, finfo_fss)) {
       perror("@write_in(): fputs fails.");
       return 1;
     }
-    if (EOF == fputc('\n', fname_fss)) {
+    if (EOF == fputc('\n', finfo_fss)) {
       perror("@write_in(): fputc() \\n fails.");
       return 1;
     }
 
-    // first we write to temp_sha1_fss, for ...
+    // first we write to temp_hash_fss, for ...
     // refers to update_files()
-    if (EOF == fputs(digest, temp_sha1_fss)) {
+    if (EOF == fputs(digest, temp_hash_fss)) {
       perror("@write_in(): fputs fails.");
       return 1;
     }
-    if (EOF == fputc('\n', temp_sha1_fss)) {
+    if (EOF == fputc('\n', temp_hash_fss)) {
       perror("@write_in(): fputc() \\n fails.");
       return 1;
     }
@@ -421,7 +421,7 @@ int remove_files()
 {
   printf(">>>> IN remove_files\n");
   char fullpath0[MAX_PATH_LEN]; // del.index
-  char fullpath1[MAX_PATH_LEN]; // fname.fss
+  char fullpath1[MAX_PATH_LEN]; // finfo.fss
   char buf[MAX_PATH_LEN];
   char record[MAX_PATH_LEN];
   long linenum_to_delete;
@@ -432,7 +432,7 @@ int remove_files()
     fprintf(stderr, "@remove_files(): get_del_index() failed\n");
     return 1;
   }
-  if (get_fname_fss(fullpath1)) {
+  if (get_finfo_fss(fullpath1)) {
     fprintf(stderr, "@remove_files(): get_del_index() failed\n");
     return 1;
   }
@@ -510,35 +510,35 @@ int remove_del_index_file()
 
 
 // if reset_mtime == 1, mtime = 1
-int send_sha1_fss_info(int sockfd, const char *prefix,
+int send_hash_fss_info(int sockfd, const char *prefix,
 		       int reset_mtime)
 {
   char fullpath[MAX_PATH_LEN];
 
-  if (get_sha1_fss(fullpath)) {
-    fprintf(stderr, "@send_sha1_file_info(): get_sha1_fss() failed\n");
+  if (get_hash_fss(fullpath)) {
+    fprintf(stderr, "@send_hash_file_info(): get_hash_fss() failed\n");
     return 1;
   }
 
   if (send_entryinfo(sockfd, fullpath, prefix, NULL, reset_mtime) == 1) {
-    fprintf(stderr, "@send_sha1_file_size(): send_fileinfo() failed\n");
+    fprintf(stderr, "@send_hash_file_size(): send_fileinfo() failed\n");
     return 1;
   }
 
   return 0;
 }
 
-int send_sha1_fss(int sockfd)
+int send_hash_fss(int sockfd)
 {
   char fullpath[MAX_PATH_LEN];
 
-  if (get_sha1_fss(fullpath)) {
-    fprintf(stderr, "@send_sha1_fss(): get_sha1_fss() failed\n");
+  if (get_hash_fss(fullpath)) {
+    fprintf(stderr, "@send_hash_fss(): get_hash_fss() failed\n");
     return 1;
   }
 
   if (send_file(sockfd, fullpath)) {
-    fprintf(stderr, "@send_sha1_fss(): send_file() failed\n");
+    fprintf(stderr, "@send_hash_fss(): send_file() failed\n");
     return 1;
   }
   
@@ -552,8 +552,8 @@ int send_file_via_linenum(int sockfd, long linenum)
   char fullpath[MAX_PATH_LEN];
   char record[MAX_PATH_LEN];
 
-  if (get_fname_fss(fullpath)) {
-    fprintf(stderr, "@send_file_via_fname(): get_fname_fss() failed\n");
+  if (get_finfo_fss(fullpath)) {
+    fprintf(stderr, "@send_file_via_fname(): get_finfo_fss() failed\n");
     return 1;
   }
 
@@ -618,8 +618,8 @@ int send_entryinfo_via_linenum(int sockfd, long linenum,
   char record[MAX_PATH_LEN];
 
 
-  if (get_fname_fss(fullpath)) {
-    fprintf(stderr, "@send_file_via_fname(): get_fname_fss() failed\n");
+  if (get_finfo_fss(fullpath)) {
+    fprintf(stderr, "@send_file_via_fname(): get_finfo_fss() failed\n");
     return 1;
   }
 
@@ -748,7 +748,7 @@ int receive_del_index_file(int sockfd, off_t sz)
   }
 
   if (receive_file(sockfd, fullpath, sz)) {
-    fprintf(stderr, "@recive+sha1_file(): receive_file() fail\n");
+    fprintf(stderr, "@receive_del_index_file(): receive_file() fail\n");
     return 1;
   }
   return 0;
@@ -864,12 +864,12 @@ int receive_file(int sockfd, const char *fname, off_t sz)
   }
   
   if (0 != fflush(file)) {
-    perror("@receive_file(): fflush(remote_sha1_file) fails.");
+    perror("@receive_file(): fflush() failed");
     return 1;
   }
   
   if (0 != fclose(file)) {
-    perror("@receive_file(): fclose(remote_sha1_file) fails.");
+    perror("@receive_file(): fclose() failed");
     return 1;
   }
 
@@ -978,20 +978,20 @@ static int get_xxx(char *fpath, const char *name)
   return 0;
 }
 
-static int get_fname_fss(char *fpath)
+static int get_finfo_fss(char *fpath)
 {
-  return get_xxx(fpath, FNAME_FSS);
+  return get_xxx(fpath, FINFO_FSS);
 }
 
-static int get_sha1_fss(char *fpath)
+static int get_hash_fss(char *fpath)
 {
-  return get_xxx(fpath, SHA1_FSS);
+  return get_xxx(fpath, HASH_FSS);
 }
 
-static int get_temp_sha1_fss(char *fpath)
+static int get_temp_hash_fss(char *fpath)
 {
 
-  return get_xxx(fpath, TEMP_SHA1_FSS);
+  return get_xxx(fpath, TEMP_HASH_FSS);
 }
 
 static int get_del_index(char *fpath)

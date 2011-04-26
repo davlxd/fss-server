@@ -35,12 +35,12 @@ static int maxi;
 static int handle_listenfd(int *listenfd);
 static int reset_client(int i);
 static int handle_client(int i);
-static int status_WAIT_MSG_CLI_REQ_SHA1_FSS(int i);
+static int status_WAIT_MSG_CLI_REQ_HASH_FSS(int i);
 static int status_WAIT_XXX(int i);
 static int status_WAIT_MSG_CLI_REQ_FILE(int i);
 static int status_WAIT_MSG_DONE_OR_LINE_NUM(int i);
 static int status_WAIT_FILE(int i);
-static int status_WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO(int i);
+static int status_WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO(int i);
 static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i);
 static int status_WAIT_DEL_IDX(int i);
 static int receive_line(int i, char *text, int len);
@@ -123,20 +123,20 @@ static int handle_listenfd(int *listenfd)
 	  
   clilen = sizeof(struct sockaddr);
   connfd = accept(*listenfd, &client_addr, &clilen);
-  if (send_sha1_fss_info(connfd, SHA1_FSS_INFO, 0)) {
-    fprintf(stderr, "@handle_listenfd(): send_sha1_file_info() failed\n");
+  if (send_hash_fss_info(connfd, HASH_FSS_INFO, 0)) {
+    fprintf(stderr, "@handle_listenfd(): send_hash_file_info() failed\n");
     return 1;
   }
   
   for (i = 0; i < CLIENTS_NUM; i++) 
     if (clients[i].sockfd < 0) {
       clients[i].sockfd = connfd;
-      clients[i].status = WAIT_MSG_CLI_REQ_SHA1_FSS;
+      clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
       break;
     }
   lock = i;
   
-  printf(">>>> client[%d], %d, connected, sha1.fss's size sent\n",
+  printf(">>>> client[%d], %d, connected, hash.fss's size sent\n",
 	 i, clients[i].sockfd);
   printf(">>>> lock set to %d\n", i);
   
@@ -176,11 +176,11 @@ static int handle_client(int i)
 {
   switch(clients[i].status) {
     
-  case WAIT_MSG_CLI_REQ_SHA1_FSS:
-    if (status_WAIT_MSG_CLI_REQ_SHA1_FSS(i)) {
+  case WAIT_MSG_CLI_REQ_HASH_FSS:
+    if (status_WAIT_MSG_CLI_REQ_HASH_FSS(i)) {
       fprintf(stderr,
 	      "@handle_clinet(): "\
-	      "status_WAIT_MSG_CLI_REQ_SHA1_FSS() failed\n");
+	      "status_WAIT_MSG_CLI_REQ_HASH_FSS() failed\n");
       return 1;
     }
     break;
@@ -231,11 +231,11 @@ static int handle_client(int i)
     break;
 
 
-  case WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO:
-    if (status_WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO(i)) {
+  case WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO:
+    if (status_WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO(i)) {
       fprintf(stderr,
 	      "@handle_client(): "\
-	      "status_WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO() " \
+	      "status_WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO() " \
 	      "failed\n");
       return 1;
     }
@@ -272,33 +272,33 @@ static int handle_client(int i)
 }
 
 
-static int status_WAIT_MSG_CLI_REQ_SHA1_FSS(int i)
+static int status_WAIT_MSG_CLI_REQ_HASH_FSS(int i)
 {
-  printf(">>>> ---> WAIT_MSG_CLI_REQ_SHA1_FSS\n");
+  printf(">>>> ---> WAIT_MSG_CLI_REQ_HASH_FSS\n");
   char buf[MAX_PATH_LEN];
   int rv;
   
   if ((rv = receive_line(i, buf, MAX_PATH_LEN)) == 1) {
     fprintf(stderr,
-	    "@status_WAIT_MSG_CLI_REQ_SHA1_FSS(): :"\
+	    "@status_WAIT_MSG_CLI_REQ_HASH_FSS(): :"\
 	    "receive_line() failed\n");
     return 1;
     // receive 0 byte, means client disconnetced 
   } else if (rv == 2)
     return 0;
 
-  if (strncmp(buf, CLI_REQ_SHA1_FSS, strlen(buf)) == 0) {
-    if (send_sha1_fss(clients[i].sockfd)) {
+  if (strncmp(buf, CLI_REQ_HASH_FSS, strlen(buf)) == 0) {
+    if (send_hash_fss(clients[i].sockfd)) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_SHA1_FSS(): "\
-	      "send_sha1_file() failed\n");
+	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS(): "\
+	      "send_hash_file() failed\n");
       return 1;
     }
     clients[i].status = WAIT_XXX;
-    printf(">>>> sha1.fss sent, status set to ---> WAIT_XXX\n");
+    printf(">>>> hash.fss sent, status set to ---> WAIT_XXX\n");
   } else {
     printf("WARNING: client[%d] current status " \
-	   "WAIT_MSG_CLI_REQ_SHA1_FSS received invalid message: %s\n",
+	   "WAIT_MSG_CLI_REQ_HASH_FSS received invalid message: %s\n",
 	   i, buf);
     return 0;
   }
@@ -390,7 +390,7 @@ static int status_WAIT_XXX(int i)
       return 1;
     }
 
-    clients[i].status = WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO;
+    clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO;
       
   } else if (strncmp(buf, FILE_INFO, strlen(FILE_INFO)) == 0) {
 
@@ -472,7 +472,7 @@ static int status_WAIT_MSG_CLI_REQ_FILE(int i)
   if (strncmp(buf, CLI_REQ_FILE, strlen(CLI_REQ_FILE)) == 0) {
     if (send_file_via_linenum(clients[i].sockfd, clients[i].line_num)) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_FILE(): send_sha1_file() failed\n");
+	      "@status_WAIT_MSG_CLI_REQ_FILE(): send_file() failed\n");
       return 1;
     }
     clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM;
@@ -562,74 +562,74 @@ static int status_WAIT_FILE(int i)
 	    "@status_WAIT_FILE(): send_msg() failed\n");
     return 1;
   }
-  clients[i].status = WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO;
+  clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO;
   printf(">>>> SER_RECEIVED sent to client[%d]\n", i); 
   return 0;
 }
 
 
-static int status_WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO(int i)
+static int status_WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO(int i)
 {
   int rv;
   char buf[MAX_PATH_LEN];
 
   if ((rv = receive_line(i, buf, MAX_PATH_LEN)) == 1) {
-    fprintf(stderr, "@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO(): "\
+    fprintf(stderr, "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): "\
 	    "receive_line() failed\n");
     return 1;
 
   } else if (rv == 2)
     return 0;
 
-  if (strncmp(buf, CLI_REQ_SHA1_FSS_INFO, strlen(buf)) == 0) {
+  if (strncmp(buf, CLI_REQ_HASH_FSS_INFO, strlen(buf)) == 0) {
 
     if (update_files()) {
-      fprintf(stderr, "@status_WAIT_MSG_CLI_REQ_SHA1_FSS_INFO" \
+      fprintf(stderr, "@status_WAIT_MSG_CLI_REQ_HASH_FSS_INFO" \
 	      "_OR_ENTRY_INFO(): update_files() failed\n");
       return 1;
     }
 
-    if (send_sha1_fss_info(clients[i].sockfd, SHA1_FSS_INFO, 1)) {
+    if (send_hash_fss_info(clients[i].sockfd, HASH_FSS_INFO, 1)) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO(): "\
-	      "send_sha1_file_info() failed\n");
+	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): "\
+	      "send_hash_file_info() failed\n");
       return 1;
     }
 
-    clients[i].status = WAIT_MSG_CLI_REQ_SHA1_FSS;
-    printf(">>>> clinets[%d] status set to ---> WAIT_MSG_CLI_REQ_SHA1_FSS\n", i);
+    clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
+    printf(">>>> clinets[%d] status set to ---> WAIT_MSG_CLI_REQ_HASH_FSS\n", i);
 
   } else if (strncmp(buf, DIR_INFO, strlen(DIR_INFO)) == 0) {
     char *token;
     token = strtok(buf+strlen(DIR_INFO), "\n");
     if (create_dir(token)) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO():" \
+	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO():" \
 	      "create_dir() failed\n");
       return 1;
     }
 
     if (send_msg(clients[i].sockfd, SER_RECEIVED)) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO():" \
+	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO():" \
 	      "send_msg() failed\n");
       return 1;
     }
 
-    clients[i].status = WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO;
+    clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO;
       
   } else if (strncmp(buf, FILE_INFO, strlen(FILE_INFO)) == 0) {
 
     if (set_fileinfo(i, buf+strlen(FILE_INFO))) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO(): "\
+	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): "\
 	      "set_fileinfo() failed\n");
       return 1;
     }
     printf(">>>> fileinfo setted\n"); 
     if (send_msg(clients[i].sockfd, SER_REQ_FILE)) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO(): " \
+	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): " \
 	      "send_msg() failed\n");
       return 1;
     }
@@ -637,7 +637,7 @@ static int status_WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO(int i)
     if (clients[i].req_sz == 0 ) {
       if (status_WAIT_FILE(i)) {
 	fprintf(stderr,
-		"@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO(): "\
+		"@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): "\
 		"status_WAIT_FILE() failed\n");
 	return 1;
       }
@@ -648,7 +648,7 @@ static int status_WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO(int i)
 
   } else {
     printf("WARNING: client[%d] current status "	\
-	   "WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO " \
+	   "WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO " \
 	   "received invalid message: %s\n",
 	   i, buf);
     return 0;
@@ -710,19 +710,19 @@ static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i)
     token = strtok(buf+strlen(DIR_INFO), "\n");
     if (create_dir(token)) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO():" \
+	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO():" \
 	      "create_dir() failed\n");
       return 1;
     }
 
     if (send_msg(clients[i].sockfd, SER_RECEIVED)) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO():" \
+	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO():" \
 	      "send_msg() failed\n");
       return 1;
     }
 
-    clients[i].status = WAIT_MSG_CLI_REQ_SHA1_FSS_INFO_OR_ENTRY_INFO;
+    clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO;
     
   } else if (strncmp(buf, FILE_INFO, strlen(FILE_INFO)) == 0) {
 
@@ -731,14 +731,14 @@ static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i)
     
     if (set_fileinfo(i, buf+strlen(FILE_INFO))) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO(): "\
+	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): "\
 	      "set_fileinfo() failed\n");
       return 1;
     }
     printf(">>>> fileinfo setted\n"); 
     if (send_msg(clients[i].sockfd, SER_REQ_FILE)) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO(): " \
+	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): " \
 	      "send_msg() failed\n");
       return 1;
     }
@@ -746,7 +746,7 @@ static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i)
     if (clients[i].req_sz == 0 ) {
       if (status_WAIT_FILE(i)) {
 	fprintf(stderr,
-		"@status_WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO(): "\
+		"@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): "\
 		"status_WAIT_FILE() failed\n");
 	return 1;
       }
@@ -757,7 +757,7 @@ static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i)
 
   } else {
     printf("WARNING: client[%d] current status " \
-	   "WAIT_MSG_CLI_REQ_SHA1_FSS_OR_ENTRY_INFO "\
+	   "WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO "\
 	   "received invalid message: %s\n",
 	   i, buf);
     return 0;
@@ -796,14 +796,14 @@ static int status_WAIT_DEL_IDX(int i)
     return 1;
   }
 
-  if (send_sha1_fss_info(clients[i].sockfd, SHA1_FSS_INFO, 1)) {
+  if (send_hash_fss_info(clients[i].sockfd, HASH_FSS_INFO, 1)) {
     fprintf(stderr,
-	    "@status_WAIT_DEL_IDX(): send_sha1_file_info() failed\n");
+	    "@status_WAIT_DEL_IDX(): send_hash_file_info() failed\n");
     return 1;
   }
 
-  clients[i].status = WAIT_MSG_CLI_REQ_SHA1_FSS;
-  printf(">>>> clinets[%d] status set to ---> WAIT_MSG_CLI_REQ_SHA1_FSS\n", i);
+  clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
+  printf(">>>> clinets[%d] status set to ---> WAIT_MSG_CLI_REQ_HASH_FSS\n", i);
 
   /* if (reset_client(i)) { */
   /*   fprintf(stderr, */
@@ -886,11 +886,11 @@ static int broadcast(int except_index)
     if (clients[i].sockfd < 0 || i == except_index)
       continue;
     else {
-      if (send_sha1_fss_info(clients[i].sockfd, SHA1_FSS_INFO, 0)) {
-	fprintf(stderr, "@broadcase: send_sha1_file_info() failed\n");
+      if (send_hash_fss_info(clients[i].sockfd, HASH_FSS_INFO, 0)) {
+	fprintf(stderr, "@broadcase: send_hash_file_info() failed\n");
 	return 1;
       }
-      clients[i].status = WAIT_MSG_CLI_REQ_SHA1_FSS;
+      clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
       printf(">>>> client[%d], broadcasted\n", i); 
     }
   }

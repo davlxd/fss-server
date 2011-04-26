@@ -31,18 +31,18 @@
 
 #define FSS_DIR ".fss"
 
-#define FNAME_FSS "fname.fss"
+#define FINFO_FSS "finfo.fss"
 
-#define SHA1_FSS "sha1.fss"
-#define TEMP_SHA1_FSS "temp.sha1.fss"
+#define HASH_FSS "hash.fss"
+#define TEMP_HASH_FSS "temp.hash.fss"
 
-/* remote.sha1.fss is ONLY server's sha.fss @ client */
-#define REMOTE_SHA1_FSS "remote.sha1.fss"
+/* remote.hash.fss is ONLY server's sha.fss @ client */
+#define REMOTE_HASH_FSS "remote.hash.fss"
 
-/* remote.sha1.fss's unique sha1 record line_number in remote.sha1.fss */
+/* remote.hash.fss's unique hash record line_number in remote.hash.fss */
 #define DIFF_REMOTE_INDEX "diff.remote.index.fss"
 
-/* local's sha1.fss's unique sha1 record line_number in sha1.fss */
+/* local's hash.fss's unique hash record line_number in hash.fss */
 #define DIFF_LOCAL_INDEX "diff.local.index.fss"
 
 #define DEL_INDEX "del.index.fss"
@@ -54,10 +54,10 @@ int update_files();
 
 /* send.... */
 
-int send_sha1_fss_info(int sockfd, const char *prefix, 
+int send_hash_fss_info(int sockfd, const char *prefix, 
 		       int reset_mtime);
 
-int send_sha1_fss(int sockfd);
+int send_hash_fss(int sockfd);
 int send_file_via_linenum(int sockfd, long linenum);
 int send_file(int sockfd, const char *relaname);
 
