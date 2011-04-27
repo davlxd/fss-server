@@ -834,7 +834,7 @@ static int receive_line(int i, char *text, int len)
   text[n] = 0;
 
   printf(">>>> receive_line received %s\n", text);
-  if (n == 0) {
+  if (n <= 0) {
     printf(">>>>clients[%d], %d disconnecting...    ",
 	   i, clients[i].sockfd); 
     
