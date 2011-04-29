@@ -44,6 +44,7 @@
 
 #define MAX_PATH_LEN 1024
 #define BUF_LEN 4096
+#define HASH_LEN 41
 
 #define PORT 3375
 #define PORT_STR "3375"

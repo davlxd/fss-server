@@ -39,20 +39,13 @@ static int fn(const char *fname, const struct stat *sb, int flag,
 	      struct FTW *ftwbuf);
 /* the following funcions do explict path connecions
  * assume fpath is big enough */
-
-static int get_fss_dir(char *);
-static int get_xxx(char *, const char *);
-static int get_finfo_fss(char *);
-static int get_hash_fss(char *);
-static int get_temp_hash_fss(char *);
-static int get_del_index(char *);
-
+static int get_thefile(const char*, char *);
 
 // make sure path0 is large enough
-static int connect_path(char *, const char *);
+static int connect_path(const char *, char *);
 
 // without any check, make sure it is called after connect_path()
-static int disconnect_path(char *, const char *);
+static int disconnect_path(const char *, char *);
 
 static int create_fss_dir(const char*);
 static int write_in(const char*, const struct stat*, int, struct FTW*);
@@ -99,15 +92,8 @@ int update_files()
   char fullpath0[MAX_PATH_LEN]; //temp.hash.fss
   char fullpath1[MAX_PATH_LEN]; //hash.fss
 
-  if (get_temp_hash_fss(fullpath0)) {
-    fprintf(stderr, "@update_files(): get_temp_hash_fss() failed\n");
-    return 1;
-  }
-
-  if (get_hash_fss(fullpath1)) {
-    fprintf(stderr, "@update_files(): get_hash_fss() failed\n");
-    return 1;
-  }
+  get_thefile(TEMP_HASH_FSS, fullpath0);
+  get_thefile(HASH_FSS, fullpath1);
 
   if (!strncpy(fullpath, rootpath, strlen(rootpath))) {
     perror("@update_files(): strncpy failed");
@@ -115,10 +101,7 @@ int update_files()
   }
   fullpath[strlen(rootpath)] = 0;
 
-  if (get_fss_dir(fullpath)) {
-    fprintf(stderr, "@update_files(): get_fss_dir() failed\n");
-    return 1;
-  }
+  get_thefile(FSS_DIR, fullpath);
 
   if (create_fss_dir(fullpath)) {
     fprintf(stderr,
@@ -127,10 +110,8 @@ int update_files()
     return 1;
   }
   
-  if (connect_path(fullpath, FINFO_FSS)) {
-    fprintf(stderr,
-	    "@update_files(): connect_path(%s, %s) fails\n",
-	    fullpath, FINFO_FSS);
+  if (connect_path(FINFO_FSS, fullpath)) {
+    fprintf(stderr, "@update_files(): connect_path() failed\n");
     return 1;
   }
   
@@ -139,12 +120,10 @@ int update_files()
     return 1;
   }
 
-  disconnect_path(fullpath, FINFO_FSS);
+  disconnect_path(FINFO_FSS, fullpath);
   
-  if (connect_path(fullpath, TEMP_HASH_FSS)) {
-    fprintf(stderr,
-	    "@update_files(): connect_path(%s, %s) fails\n",
-	    fullpath, TEMP_HASH_FSS);
+  if (connect_path(TEMP_HASH_FSS, fullpath)) {
+    fprintf(stderr, "@update_files(): connect_path() failed\n");
     return 1;
   }
 
@@ -152,9 +131,9 @@ int update_files()
     fprintf(stderr, "@update_files(): fopen(%s) fails\n", fullpath);
     return 1;
   }
-  disconnect_path(fullpath, TEMP_HASH_FSS);
-  disconnect_path(fullpath, FSS_DIR);
-
+  
+  disconnect_path(TEMP_HASH_FSS, fullpath);
+  disconnect_path(FSS_DIR, fullpath);
 
   if (nftw(fullpath, write_in, 10, FTW_DEPTH) != 0) {
     perror("@update_files(): ftw() failed");
@@ -227,7 +206,7 @@ int update_files()
   return 0;
 }
 
-static int connect_path(char *path0, const char *path1)
+static int connect_path(const char *path1, char *path0)
 {
   char *ptr;
   //char *ptr1;
@@ -261,7 +240,7 @@ static int connect_path(char *path0, const char *path1)
   return 0;
 }
 
-static int disconnect_path(char *path0, const char *path1)
+static int disconnect_path(const char *path1, char *path0)
 {
   char *ptr;
   ptr = path0 + strlen(path0);
@@ -428,14 +407,8 @@ int remove_files()
   struct stat statbuf;
   FILE *file;
 
-  if (get_del_index(fullpath0)) {
-    fprintf(stderr, "@remove_files(): get_del_index() failed\n");
-    return 1;
-  }
-  if (get_finfo_fss(fullpath1)) {
-    fprintf(stderr, "@remove_files(): get_del_index() failed\n");
-    return 1;
-  }
+  get_thefile(DEL_INDEX, fullpath0);
+  get_thefile(FINFO_FSS, fullpath1);
 
   if (stat(fullpath0, &statbuf) < 0) {
     perror("@remove_files(): stat failed");
@@ -492,12 +465,8 @@ int remove_del_index_file()
 {
   char fullpath[MAX_PATH_LEN];
 
-  if (get_del_index(fullpath)) {
-    fprintf(stderr,
-	    "@remove_del_index_file(): get_del_index() failed\n");
-    return 1;
-  }
-
+  get_thefile(DEL_INDEX, fullpath);
+  
   errno = 0;
   if (remove(fullpath) < 0 && errno != ENOENT) {
     perror("@remove_del_index_file(): remove fullpath failed");
@@ -515,10 +484,7 @@ int send_hash_fss_info(int sockfd, const char *prefix,
 {
   char fullpath[MAX_PATH_LEN];
 
-  if (get_hash_fss(fullpath)) {
-    fprintf(stderr, "@send_hash_file_info(): get_hash_fss() failed\n");
-    return 1;
-  }
+  get_thefile(HASH_FSS, fullpath);
 
   if (send_entryinfo(sockfd, fullpath, prefix, NULL, reset_mtime) == 1) {
     fprintf(stderr, "@send_hash_file_size(): send_fileinfo() failed\n");
@@ -532,10 +498,7 @@ int send_hash_fss(int sockfd)
 {
   char fullpath[MAX_PATH_LEN];
 
-  if (get_hash_fss(fullpath)) {
-    fprintf(stderr, "@send_hash_fss(): get_hash_fss() failed\n");
-    return 1;
-  }
+  get_thefile(HASH_FSS, fullpath);
 
   if (send_file(sockfd, fullpath)) {
     fprintf(stderr, "@send_hash_fss(): send_file() failed\n");
@@ -552,13 +515,9 @@ int send_file_via_linenum(int sockfd, long linenum)
   char fullpath[MAX_PATH_LEN];
   char record[MAX_PATH_LEN];
 
-  if (get_finfo_fss(fullpath)) {
-    fprintf(stderr, "@send_file_via_fname(): get_finfo_fss() failed\n");
-    return 1;
-  }
-
+  get_thefile(FINFO_FSS, fullpath);
+  
   memset(record, 0, MAX_PATH_LEN);
-
 
   if (get_line(fullpath, linenum, record, MAX_PATH_LEN)) {
     fprintf(stderr, "@send_file_via_fname(): get_line() failed\n");
@@ -617,12 +576,7 @@ int send_entryinfo_via_linenum(int sockfd, long linenum,
   char fullpath[MAX_PATH_LEN];
   char record[MAX_PATH_LEN];
 
-
-  if (get_finfo_fss(fullpath)) {
-    fprintf(stderr, "@send_file_via_fname(): get_finfo_fss() failed\n");
-    return 1;
-  }
-
+  get_thefile(FINFO_FSS, fullpath);
 
   memset(record, 0, MAX_PATH_LEN);
   if (get_line(fullpath, linenum, record, MAX_PATH_LEN)) {
@@ -742,10 +696,7 @@ int receive_del_index_file(int sockfd, off_t sz)
 {
   char fullpath[MAX_PATH_LEN];
 
-  if (get_del_index(fullpath)) {
-    fprintf(stderr, "@receive_del_index_file(): get_del_index() failed\n");
-    return 1;
-  }
+  get_thefile(DEL_INDEX, fullpath);
 
   if (receive_file(sockfd, fullpath, sz)) {
     fprintf(stderr, "@receive_del_index_file(): receive_file() fail\n");
@@ -789,7 +740,7 @@ int receive_common_file(int sockfd, const char *rela_fname, off_t sz)
   token = strtok(relaname, "/");
   token1 = strtok(NULL, "/");
   while(token && token1) {
-    if (connect_path(fullpath, token)) {
+    if (connect_path(token, fullpath)) {
       fprintf(stderr, "@receive_common_file(): connect_path() failed\n");
       return 1;
     }
@@ -809,7 +760,7 @@ int receive_common_file(int sockfd, const char *rela_fname, off_t sz)
     token1 = strtok(NULL, "/");
   }
     
-  if (connect_path(fullpath, token)) {
+  if (connect_path(token, fullpath)) {
     fprintf(stderr, "@receive_common_file(): connect_path failed\n");
     return 1;
   }
@@ -896,7 +847,7 @@ int create_dir(const char *relafname)
   }
   fullpath[strlen(rootpath)] = 0;
 
-  if (connect_path(fullpath, relafname)) {
+  if (connect_path(relafname, fullpath)) {
     fprintf(stderr, "@create_dir(): connect_path failed\n");
     return 1;
   }
@@ -942,60 +893,26 @@ static int fn(const char *fname, const struct stat *sb,
   return 0;
 }
 
-
-static int get_fss_dir(char *fpath)
+static int get_thefile(const char *name, char *fpath)
 {
   if (!strncpy(fpath, rootpath, strlen(rootpath))) {
-    fprintf(stderr,
-	    "@get_fss_dir(): strncpy rootpath:%s to fpath:%s failed: %s\n",
-	    rootpath, fpath, strerror(errno));
+    perror("@get_thefile(): strncpy failed");
     return 1;
   }
   fpath[strlen(rootpath)] = 0;
 
-  if (connect_path(fpath, FSS_DIR)) {
-    fprintf(stderr, "@get_fss_dir(): connect_path failed\n");
+  if (connect_path(FSS_DIR, fpath)) {
+    fprintf(stderr, "@get_thefile(): connect_path() failed\n");
     return 1;
   }
 
-  return 0;
-}
+  if (strncmp(FSS_DIR, name, strlen(name)) == 0)
+    return 0;
 
-
-static int get_xxx(char *fpath, const char *name)
-{
-  if (get_fss_dir(fpath)) {
-    fprintf(stderr, "@get_xxx(): get_fss_dir() failed\n");
+  if (connect_path(name, fpath)) {
+    fprintf(stderr, "@get_thefile(): connect_path() failed\n");
     return 1;
   }
   
-  if (connect_path(fpath, name)) {
-    fprintf(stderr, "@get_xxx(): connect_path(%s, %s) failed\n",
-	    fpath, name);
-    return 1;
-  }
-
   return 0;
 }
-
-static int get_finfo_fss(char *fpath)
-{
-  return get_xxx(fpath, FINFO_FSS);
-}
-
-static int get_hash_fss(char *fpath)
-{
-  return get_xxx(fpath, HASH_FSS);
-}
-
-static int get_temp_hash_fss(char *fpath)
-{
-
-  return get_xxx(fpath, TEMP_HASH_FSS);
-}
-
-static int get_del_index(char *fpath)
-{
-  return get_xxx(fpath, DEL_INDEX);
-}
-

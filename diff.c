@@ -18,8 +18,10 @@
  * You should have received a copy of the GNU General Public License
  * along with fss.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 #include "fss.h"
 #include "diff.h"
+
 
 static FILE *file_in_0;
 static FILE *file_in_1;
@@ -27,13 +29,12 @@ static FILE *file_out_0;
 static FILE *file_out_1;
 static FILE *file_out_2;
 
-static int open_them(const char *fin0, const char *fin1,
-		     const char *fout0, const char *fout1,
-		     const char *fout2);
-static int close_them();
 
-static int get_line_num(long *num, FILE *file);
-static int write_line_num(long num, FILE *file_out);
+static int open_them(const char*, const char*, const char*, const char*,
+		     const char*);
+static int get_line_num(long*, FILE*);
+static int write_line_num(long, FILE*);
+static int close_them();
 
 
 int diff(const char *fin0, const char *fin1,
@@ -58,9 +59,6 @@ int diff(const char *fin0, const char *fin1,
     return 1;
   }
 
-
-  printf("linenum is %ld and %ld\n", file_in_0_line_num, file_in_1_line_num);
-
   int *flag = (int*)malloc(file_in_1_line_num * sizeof(int));
   for (j = 0; j < file_in_1_line_num; j++)
     flag[j] = 0;
@@ -68,23 +66,24 @@ int diff(const char *fin0, const char *fin1,
   rewind(file_in_0);
   for (i = 0; i < file_in_0_line_num; i++) {
     fgets(buf0, MAX_LINE_LEN, file_in_0);
-    printf("Now --%s--%ld-- from file_in_0 read\n", buf0, i+1);
+    //printf(">>>> diff: Now --%s--%ld-- from file_in_0 read\n", buf0, i+1);
     rewind(file_in_1);
     for (j = 0; j < file_in_1_line_num; j++) {
       fgets(buf1, MAX_LINE_LEN, file_in_1);
-      printf("Now --%s--%ld-- from file_in_1 read\n", buf1, j+1);
+      // printf(">>>> diff: Now --%s--%ld-- from file_in_1 read\n", buf1, j+1);
       if (flag[j]) {
-	printf("Setted\n");
+	//printf("Setted\n");
 	continue;
       }
       if (strncmp(buf0, buf1, 40) == 0) {
-	printf("Setting\n");
+	//printf("Setting\n");
 	flag[j] = 1;
 	break;
       }
     }
     if (j == file_in_1_line_num) {
-      printf("Line --%s--%ld-- from file_in_0 unique\n", buf0, i+1); 
+      //printf(">>> diff: Line --%s--%ld-- from file_in_0 unique\n",
+      //buf0, i+1); 
       if (write_line_num(i+1, file_out_0)) {
 	fprintf(stderr, "@diff(): write_line_num() failed");
 	return 1;
@@ -235,9 +234,6 @@ static int get_line_num(long *num, FILE *file)
     perror("@get_line_num(): fseeko failed");
     return 1;
   }
-  
-
-  printf("num is %ld\n", *num);
 
   return 0;
 }
