@@ -30,7 +30,8 @@ typedef struct client
   int status;
 
   long line_num; // for send file
-  
+
+  char sha1_str[41];
   char rela_name[MAX_PATH_LEN];
   off_t req_sz;
 

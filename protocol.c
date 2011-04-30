@@ -35,6 +35,8 @@ static int maxi;
 static int handle_listenfd(int *listenfd);
 static int reset_client(int i);
 static int handle_client(int i);
+static int handle_FILE_INFO(int i, char *buf);
+static int handle_DIR_INFO(int i, char *buf);
 static int status_WAIT_MSG_CLI_REQ_HASH_FSS(int i);
 static int status_WAIT_XXX(int i);
 static int status_WAIT_MSG_CLI_REQ_FILE(int i);
@@ -376,47 +378,18 @@ static int status_WAIT_XXX(int i)
 
   } else if (strncmp(buf, DIR_INFO, strlen(DIR_INFO)) == 0) {
 
-    char *token;
-    token = strtok(buf+strlen(DIR_INFO), "\n");
-    if (create_dir(token)) {
-      fprintf(stderr,
-	      "@status_XXX(): create_dir() failed\n");
+    if (handle_DIR_INFO(i, buf)) {
+      fprintf(stderr, "@status_WAIT_XXX(): handle_DIR_INFO() failed\n");
       return 1;
     }
 
-    if (send_msg(clients[i].sockfd, SER_RECEIVED)) {
-      fprintf(stderr,
-	      "@status_XXX send_msg() failed\n");
-      return 1;
-    }
-
-    clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO;
       
   } else if (strncmp(buf, FILE_INFO, strlen(FILE_INFO)) == 0) {
 
-    lock = i;
-    if (set_fileinfo(i, buf+strlen(FILE_INFO))) {
-      fprintf(stderr,
-	      "@status_WAIT_XXX(): set_fileinfo() failed\n");
+    if (handle_FILE_INFO(i, buf)) {
+      fprintf(stderr, "@status_XXX(): handle_FILE_INFO() failed\n");
       return 1;
     }
-    printf(">>>> fileinfo setted\n");
-    if (send_msg(clients[i].sockfd, SER_REQ_FILE)) {
-      fprintf(stderr,
-	      "@status_WAIT_XXX(): send_msg() failed\n");
-      return 1;
-    }
-
-    if (clients[i].req_sz == 0 ) {
-      if (status_WAIT_FILE(i)) {
-	fprintf(stderr,
-		"@status_WAIT_XXX(): status_WAIT_FILE() failed\n");
-	return 1;
-      }
-    } else 
-      clients[i].status = WAIT_FILE;
-
-    printf(">>>> SER_REQ_FILE sent\n"); 
 
   } else if (strncmp(buf, DEL_IDX_INFO, strlen(DEL_IDX_INFO)) == 0) {
 
@@ -450,6 +423,63 @@ static int status_WAIT_XXX(int i)
 	   i, buf);
     return 0;
   }
+  return 0;
+}
+
+
+static int handle_FILE_INFO(int i, char *buf)
+{
+    lock = i;
+    if (set_fileinfo(i, buf+strlen(FILE_INFO))) {
+      fprintf(stderr,
+	      "@handle_FILE_INFO(): set_fileinfo() failed\n");
+      return 1;
+    }
+    printf(">>>> fileinfo setted\n");
+    if (send_msg(clients[i].sockfd, SER_REQ_FILE)) {
+      fprintf(stderr,
+	      "@handle_FILE_INFO(): send_msg() failed\n");
+      return 1;
+    }
+
+    if (clients[i].req_sz == 0 ) {
+      if (status_WAIT_FILE(i)) {
+	fprintf(stderr,
+		"@handle_FILE_INFO(): status_WAIT_FILE() failed\n");
+	return 1;
+      }
+    } else 
+      clients[i].status = WAIT_FILE;
+
+    printf(">>>> SER_REQ_FILE sent\n"); 
+
+
+  return 0;
+}
+
+
+static int handle_DIR_INFO(int i, char *buf)
+{
+    lock = i;
+
+    if (set_fileinfo(i, buf + strlen(DIR_INFO))) {
+      fprintf(stderr, "@handle_DIR_INFO(): set_fileinfo() failed\n");
+      return 1;
+    }
+    
+    if (create_dir(clients[i].rela_name)) {
+      fprintf(stderr, "@handle_DIR_INFO(): create_dir() failed\n");
+      return 1;
+    }
+
+    if (send_msg(clients[i].sockfd, SER_RECEIVED)) {
+      fprintf(stderr, "@handle_DIR_INFO(): send_msg() failed\n");
+      return 1;
+    }
+
+    clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO;
+
+
   return 0;
 }
 
@@ -600,51 +630,22 @@ static int status_WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO(int i)
     printf(">>>> clinets[%d] status set to ---> WAIT_MSG_CLI_REQ_HASH_FSS\n", i);
 
   } else if (strncmp(buf, DIR_INFO, strlen(DIR_INFO)) == 0) {
-    char *token;
-    token = strtok(buf+strlen(DIR_INFO), "\n");
-    if (create_dir(token)) {
+
+    if (handle_DIR_INFO(i, buf)) {
       fprintf(stderr,
 	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO():" \
-	      "create_dir() failed\n");
+	      "handle_DIR_INFO() failed\n");
       return 1;
     }
-
-    if (send_msg(clients[i].sockfd, SER_RECEIVED)) {
-      fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO():" \
-	      "send_msg() failed\n");
-      return 1;
-    }
-
-    clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO;
       
   } else if (strncmp(buf, FILE_INFO, strlen(FILE_INFO)) == 0) {
 
-    if (set_fileinfo(i, buf+strlen(FILE_INFO))) {
-      fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): "\
-	      "set_fileinfo() failed\n");
-      return 1;
-    }
-    printf(">>>> fileinfo setted\n"); 
-    if (send_msg(clients[i].sockfd, SER_REQ_FILE)) {
+    if (handle_FILE_INFO(i, buf)) {
       fprintf(stderr,
 	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): " \
-	      "send_msg() failed\n");
+	      "handle_FILE_INFO() failed\n");
       return 1;
     }
-
-    if (clients[i].req_sz == 0 ) {
-      if (status_WAIT_FILE(i)) {
-	fprintf(stderr,
-		"@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): "\
-		"status_WAIT_FILE() failed\n");
-	return 1;
-      }
-    } else 
-      clients[i].status = WAIT_FILE;
-    
-    printf(">>>> SER_REQ_FILE sent\n");
 
   } else {
     printf("WARNING: client[%d] current status "	\
@@ -705,59 +706,25 @@ static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i)
     printf(">>>>> SER_REQ_DEL_IDX sent\n");
 
   } else if (strncmp(buf, DIR_INFO, strlen(DIR_INFO)) == 0) {
-    lock = i;
-    char *token;
-    token = strtok(buf+strlen(DIR_INFO), "\n");
-    if (create_dir(token)) {
-      fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO():" \
-	      "create_dir() failed\n");
+
+    if (handle_DIR_INFO(i, buf)) {
+      fprintf(stderr, "@status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(): "\
+	      "handle_DIR_INFO() failed\n");
       return 1;
     }
-
-    if (send_msg(clients[i].sockfd, SER_RECEIVED)) {
-      fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO():" \
-	      "send_msg() failed\n");
-      return 1;
-    }
-
-    clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO;
     
   } else if (strncmp(buf, FILE_INFO, strlen(FILE_INFO)) == 0) {
 
-    lock = i;
-    printf(">>>> lock set to %d\n", i);
-    
-    if (set_fileinfo(i, buf+strlen(FILE_INFO))) {
+    if (handle_FILE_INFO(i, buf)) {
       fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): "\
-	      "set_fileinfo() failed\n");
+	      "@status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO():"\
+	      "handle_FILE_INFO() failed\n");
       return 1;
     }
-    printf(">>>> fileinfo setted\n"); 
-    if (send_msg(clients[i].sockfd, SER_REQ_FILE)) {
-      fprintf(stderr,
-	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): " \
-	      "send_msg() failed\n");
-      return 1;
-    }
-
-    if (clients[i].req_sz == 0 ) {
-      if (status_WAIT_FILE(i)) {
-	fprintf(stderr,
-		"@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): "\
-		"status_WAIT_FILE() failed\n");
-	return 1;
-      }
-    } else 
-      clients[i].status = WAIT_FILE;
-    
-    printf(">>>> SER_REQ_FILE sent\n"); 
 
   } else {
     printf("WARNING: client[%d] current status " \
-	   "WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO "\
+	   "WAIT_MSG_DEL_IDX_INFO_OR_ENTRY_INFO "\
 	   "received invalid message: %s\n",
 	   i, buf);
     return 0;
@@ -827,7 +794,7 @@ static int receive_line(int i, char *text, int len)
   int n;
 
   //TODO: A while() should be place here, within MAX_PATH_LEN
-  if ((n = read(clients[i].sockfd, text, len)) < 0) {
+  if ((n = read(clients[i].sockfd, text, len))) {
     perror("@receive_line(): read failed");
     return 1;
   }
@@ -855,7 +822,15 @@ static int set_fileinfo(int i, char *buf)
   printf(">>>> In set_fileinfo string is %s", buf); 
 
   char *token;
+
   token = strtok(buf, "\n");
+  if (!strncpy(clients[i].sha1_str, token, strlen(token))) {
+    perror("@set_fileinfo(): strncpy failed");
+    return 1;
+  }
+  (clients[i].sha1_str)[strlen(token)] = 0;
+
+  token = strtok(NULL, "\n");
   if(strncpy(clients[i].rela_name, token, strlen(token)) == NULL) {
     perror("@set_fileinfo(): strncpy failed");
     return 1;
