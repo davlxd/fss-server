@@ -822,7 +822,11 @@ static int receive_line(int i, char *text, int len)
     printf(">>>>clients[%d], %d disconnecting...    ",
 	   i, clients[i].sockfd); 
     
-    reset_client(i);	
+    reset_client(i);
+    if (0 > close(client[i].sockfd)) {
+      perror("@receive_line(): close(client[i].sockfd) failed");
+      return 1;
+    }
     FD_CLR(clients[i].sockfd, &allset);
     clients[i].sockfd = -1;
 
