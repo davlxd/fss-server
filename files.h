@@ -24,10 +24,10 @@
 
 #include "fss.h"
 
-
-#define PREFIX0_SENT 0
-#define PREFIX1_SENT 2
-#define PREFIX2_SENT 3
+#define PREFIX0_SENT 00001
+#define PREFIX1_SENT 00002
+#define PREFIX2_SENT 00004
+#define SIZE0_SENT 00010
 
 #define FSS_DIR ".fss"
 
@@ -54,8 +54,8 @@ int update_files();
 
 /* send.... */
 
-int send_hash_fss_info(int sockfd, const char *prefix, 
-		       int reset_mtime);
+int send_hash_fss_info(int sockfd, const char *prefix,
+		       int reset_mtime, unsigned char *);
 
 int send_hash_fss(int sockfd);
 int send_file_via_linenum(int sockfd, long linenum);
@@ -63,11 +63,12 @@ int send_file(int sockfd, const char *relaname);
 
 int send_entryinfo_via_linenum(int sockfd, long linenum,
 			       const char *prefix0,
-			       const char *prefix1);
+			       const char *prefix1, 
+			       unsigned char *);
 
 int send_entryinfo(int sockfd, const char *fname,
 		   const char *prefix0, const char *prefix1,
-		   int reset_mtime);
+		   int reset_mtime, unsigned char *flag);
 
 int send_msg(int sockfd, const char *msg);
 

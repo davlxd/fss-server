@@ -571,13 +571,13 @@ int remove_del_index_file()
 
 // if reset_mtime == 1, mtime = 1
 int send_hash_fss_info(int sockfd, const char *prefix,
-		       int reset_mtime)
+		       int reset_mtime, unsigned char *flag)
 {
   char fullpath[MAX_PATH_LEN];
 
   get_thefile(HASH_FSS, fullpath);
 
-  if (send_entryinfo(sockfd, fullpath, prefix, NULL, reset_mtime) == 1) {
+  if (send_entryinfo(sockfd, fullpath, prefix, NULL, reset_mtime, flag)) {
     fprintf(stderr, "@send_hash_file_size(): send_fileinfo() failed\n");
     return 1;
   }
@@ -659,11 +659,11 @@ int send_file(int sockfd, const char *fname)
   return 0;
 }
 
-/* return ...*/
+
 int send_entryinfo_via_linenum(int sockfd, long linenum,
-			       const char *prefix0, const char *prefix1)
+			       const char *prefix0, const char *prefix1,
+			       unsigned char *flag)
 {
-  int rv;
   char fullpath[MAX_PATH_LEN];
   char record[MAX_PATH_LEN];
 
@@ -675,28 +675,28 @@ int send_entryinfo_via_linenum(int sockfd, long linenum,
     return 1;
   }
 
-  if ((rv = send_entryinfo(sockfd, record, prefix0, prefix1, 0)) == 1) {
-    fprintf(stderr, "@send_fileinfo_via_fname(): send_fileinfo() failed\n");
+  if (send_entryinfo(sockfd, record, prefix0, prefix1, 0, flag)) {
+    fprintf(stderr,
+	    "@send_fileinfo_via_fname(): send_entryinfo() failed\n");
     return 1;
+  }
 
-  } else if (rv == 2)
-    return 2;
- 
-  return 0;
+   return 0;
 }
 
 
 
 int send_entryinfo(int sockfd, const char *fname,
 		   const char *prefix0, const char *prefix1,
-		   int reset_mtime)
-{
-  int rv;
+		   int reset_mtime, unsigned char *flag)
+{ 
   char rela_fname[MAX_PATH_LEN];
   char msg[MAX_PATH_LEN];
   char sha1[41];
   struct stat statbuf;
   int len, str_len;
+
+  *flag = 0;
 
   if (stat(fname, &statbuf) < 0) {
     perror("@send_fileinfo_via_fname(): stat failed");
@@ -708,14 +708,14 @@ int send_entryinfo(int sockfd, const char *fname,
       perror("@send_entryinfo(): strncpy() failed");
       return 1;
     }
-    msg[strlen(prefix1)] = 0;   rv = PREFIX1_SENT;
+    msg[strlen(prefix1)] = 0;   *flag |= PREFIX1_SENT;
 
   } else {
     if (strncpy(msg, prefix0, strlen(prefix0)) == NULL) {
       perror("@send_entryinfo(): strncpy() failed");
       return 1;
     }
-    msg[strlen(prefix0)] = 0;   rv = PREFIX0_SENT;
+    msg[strlen(prefix0)] = 0;   *flag |= PREFIX0_SENT;
   }
   
   if (compute_hash(fname, rootpath, sha1, NULL)) {
@@ -764,8 +764,10 @@ int send_entryinfo(int sockfd, const char *fname,
     perror("@send_fileinfo(): snprintf() failed");
     return 1;
   }
-
   msg[str_len + len] = 0;
+
+  if (statbuf.st_size == 0)
+    *flag |= SIZE0_SENT;
 
   if (send_msg(sockfd, msg)) {
     fprintf(stderr, "@send_fileinfo(): send_msg() failed\n");
@@ -776,7 +778,7 @@ int send_entryinfo(int sockfd, const char *fname,
 
   printf(">>>> just send --%s--\n", msg);
 
-  return rv;
+  return 0;
 }
 
 int send_msg(int sockfd, const char *msg)
@@ -929,6 +931,7 @@ int receive_file(int sockfd, const char *fname, off_t sz)
 int create_dir(const char *relafname)
 {
   char fullpath[MAX_PATH_LEN];
+  char rela_fname[MAX_PATH_LEN];
   struct stat statbuf;
   mode_t mode;
 
@@ -946,23 +949,53 @@ int create_dir(const char *relafname)
   }
   fullpath[strlen(rootpath)] = 0;
 
-  if (connect_path(relafname, fullpath)) {
-    fprintf(stderr, "@create_dir(): connect_path failed\n");
-    return 1;
-  }
 
-  errno = 0;
-  if (stat(fullpath, &statbuf) < 0 ) {
-    if (errno == ENOENT) {
-      if (mkdir(fullpath, mode) < 0) {
-	perror("@create_dir(): mkdir() failed\n");
+  strncpy(rela_fname, relafname, strlen(relafname));
+  rela_fname[strlen(relafname)] = 0;
+
+  char *token;
+  token = strtok(rela_fname, "/");
+  while(token) {
+    connect_path(token, fullpath);
+    errno = 0;
+    if (stat(fullpath, &statbuf) < 0 ) {
+      if (errno == ENOENT) {
+	if (mkdir(fullpath, mode) < 0) {
+	  if (errno == EEXIST) {
+	    if (remove_dir(fullpath)) {
+	      fprintf(stderr, "@create_dir(): remove_dir failed\n");
+	      return 1;
+	    }
+	  } else {
+	    perror("@create_dir(): mkdir() failed");
+	    return 1;
+	  }
+	}
+      } else {
+	perror("@create_dir(): stat() failed");
 	return 1;
       }
-    } else {
-      perror("@create_dir(): stat() failed\n");
-      return 1;
     }
+    token = strtok(NULL, "/");
   }
+  
+  /* if (connect_path(relafname, fullpath)) { */
+  /*   fprintf(stderr, "@create_dir(): connect_path failed\n"); */
+  /*   return 1; */
+  /* } */
+
+  /* errno = 0; */
+  /* if (stat(fullpath, &statbuf) < 0 ) { */
+  /*   if (errno == ENOENT) { */
+  /*     if (mkdir(fullpath, mode) < 0) { */
+  /* 	perror("@create_dir(): mkdir() failed\n"); */
+  /* 	return 1; */
+  /*     } */
+  /*   } else { */
+  /*     perror("@create_dir(): stat() failed\n"); */
+  /*     return 1; */
+  /*   } */
+  /* } */
   
 
   return 0;

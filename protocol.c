@@ -121,11 +121,12 @@ static int handle_listenfd(int *listenfd)
   int i;
   struct sockaddr client_addr;
   socklen_t clilen;
+  unsigned char flag;
 
 	  
   clilen = sizeof(struct sockaddr);
   connfd = accept(*listenfd, &client_addr, &clilen);
-  if (send_hash_fss_info(connfd, HASH_FSS_INFO, 0)) {
+  if (send_hash_fss_info(connfd, HASH_FSS_INFO, 0, &flag)) {
     fprintf(stderr, "@handle_listenfd(): send_hash_file_info() failed\n");
     return 1;
   }
@@ -133,7 +134,12 @@ static int handle_listenfd(int *listenfd)
   for (i = 0; i < CLIENTS_NUM; i++) 
     if (clients[i].sockfd < 0) {
       clients[i].sockfd = connfd;
-      clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
+
+      if (flag & SIZE0_SENT)
+	clients[i].status = WAIT_XXX;
+      else
+	clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
+
       break;
     }
   lock = i;
@@ -317,7 +323,8 @@ static int status_WAIT_MSG_CLI_REQ_HASH_FSS(int i)
 static int status_WAIT_XXX(int i)
 {
   printf(">>>> ---> WAIT_XXX\n");
-  int rv, rvv;
+  int rv;
+  unsigned char flag;
   long linenum;
   char buf[MAX_PATH_LEN];
   
@@ -361,23 +368,21 @@ static int status_WAIT_XXX(int i)
       perror("@status_WAIT_XXX(): strtol() failed");
       return 1;
     }
-    if ((rvv = send_entryinfo_via_linenum(clients[i].sockfd, linenum,
-					  FILE_INFO, DIR_INFO)) == 1) {
+    if (send_entryinfo_via_linenum(clients[i].sockfd, linenum,
+				   FILE_INFO, DIR_INFO, &flag)) {
       fprintf(stderr,
 	      "@status_WAIT_XXX(): send_entryinfo_via_linenum() failed\n");
       return 1;
-      
-    } else if (rvv == PREFIX0_SENT) {
-    clients[i].line_num = linenum;
-    clients[i].status = WAIT_MSG_CLI_REQ_FILE;
 
-    } else if (rvv == PREFIX1_SENT) {
-      clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM;
     }
-
+    if (flag & SIZE0_SENT || flag & PREFIX1_SENT) {
+      clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM;
+    } else if (flag & PREFIX0_SENT) {
+      clients[i].line_num = linenum;
+      clients[i].status = WAIT_MSG_CLI_REQ_FILE;
+    } 
 
   } else if (strncmp(buf, DIR_INFO, strlen(DIR_INFO)) == 0) {
-
     if (handle_DIR_INFO(i, buf)) {
       fprintf(stderr, "@status_WAIT_XXX(): handle_DIR_INFO() failed\n");
       return 1;
@@ -399,12 +404,6 @@ static int status_WAIT_XXX(int i)
       return 1;
     }
     printf(">>>> del_index info set\n");
-        
-    if (send_msg(clients[i].sockfd, SER_REQ_DEL_IDX)) {
-      fprintf(stderr,
-	      "@status_WAIT_XXX(): send_msg() failed\n");
-      return 1;
-    }
 
     if (clients[i].req_sz == 0) {
       if (status_WAIT_DEL_IDX(i)) {
@@ -412,8 +411,14 @@ static int status_WAIT_XXX(int i)
 		"status_WAIT_XXX(): status_WAIT_DEL_IDX() failed\n");
 	return 1;
       }
-    } else 
+    } else {
+      if (send_msg(clients[i].sockfd, SER_REQ_DEL_IDX)) {
+	fprintf(stderr,
+		"@status_WAIT_XXX(): send_msg() failed\n");
+	return 1;
+      }
       clients[i].status = WAIT_DEL_IDX;
+    }
 
     printf(">>>>> SER_REQ_DEL_IDX sent\n"); 
 
@@ -436,11 +441,6 @@ static int handle_FILE_INFO(int i, char *buf)
       return 1;
     }
     printf(">>>> fileinfo setted\n");
-    if (send_msg(clients[i].sockfd, SER_REQ_FILE)) {
-      fprintf(stderr,
-	      "@handle_FILE_INFO(): send_msg() failed\n");
-      return 1;
-    }
 
     if (clients[i].req_sz == 0 ) {
       if (status_WAIT_FILE(i)) {
@@ -448,8 +448,14 @@ static int handle_FILE_INFO(int i, char *buf)
 		"@handle_FILE_INFO(): status_WAIT_FILE() failed\n");
 	return 1;
       }
-    } else 
+    } else {
+      if (send_msg(clients[i].sockfd, SER_REQ_FILE)) {
+	fprintf(stderr,
+		"@handle_FILE_INFO(): send_msg() failed\n");
+	return 1;
+      }
       clients[i].status = WAIT_FILE;
+    }
 
     printf(">>>> SER_REQ_FILE sent\n"); 
 
@@ -521,7 +527,8 @@ static int status_WAIT_MSG_DONE_OR_LINE_NUM(int i)
 {
   printf(">>>> ---> WAIT_MSG_DONE_OR_LINE_NUM\n");
 
-  int rv, rvv;
+  int rv;
+  unsigned char flag;
   long linenum;
   char buf[MAX_PATH_LEN];
   
@@ -548,19 +555,20 @@ static int status_WAIT_MSG_DONE_OR_LINE_NUM(int i)
       perror("@status_WAIT_MSG_DONE_OR_LINE_NUM(): strtol() failed");
       return 1;
     }
-    if ((rvv = send_entryinfo_via_linenum(clients[i].sockfd, linenum,
-					  FILE_INFO, DIR_INFO)) == 1) {
+    if (send_entryinfo_via_linenum(clients[i].sockfd, linenum,
+				   FILE_INFO, DIR_INFO, &flag)) {
       fprintf(stderr,
 	      "@status_WAIT_MSG_DONE_OR_LINE_NUM(): "
 	      "send_entryinfo_via_linenum() failed\n");
       return 1;
-
-    } else if (rvv == PREFIX0_SENT) {
+    }
+    
+    if (flag & PREFIX1_SENT || flag & SIZE0_SENT) {
+      clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM;
+    }
+    else if (flag & PREFIX0_SENT) {
       clients[i].line_num = linenum;
       clients[i].status = WAIT_MSG_CLI_REQ_FILE;
-
-    } else if (rvv == PREFIX1_SENT) {
-      clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM;
     }
 
       
@@ -601,6 +609,7 @@ static int status_WAIT_FILE(int i)
 static int status_WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO(int i)
 {
   int rv;
+  unsigned char flag;
   char buf[MAX_PATH_LEN];
 
   if ((rv = receive_line(i, buf, MAX_PATH_LEN)) == 1) {
@@ -619,14 +628,18 @@ static int status_WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO(int i)
       return 1;
     }
 
-    if (send_hash_fss_info(clients[i].sockfd, HASH_FSS_INFO, 1)) {
+    if (send_hash_fss_info(clients[i].sockfd, HASH_FSS_INFO, 1, &flag)) {
       fprintf(stderr,
 	      "@status_WAIT_MSG_CLI_REQ_HASH_FSS_OR_ENTRY_INFO(): "\
 	      "send_hash_file_info() failed\n");
       return 1;
     }
 
-    clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
+    if (flag & SIZE0_SENT)
+      clients[i].status = WAIT_XXX;
+    else 
+      clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
+    
     printf(">>>> clinets[%d] status set to ---> WAIT_MSG_CLI_REQ_HASH_FSS\n", i);
 
   } else if (strncmp(buf, DIR_INFO, strlen(DIR_INFO)) == 0) {
@@ -686,12 +699,6 @@ static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i)
     }
     printf(">>>> del index info setted\n");
     
-    if (send_msg(clients[i].sockfd, SER_REQ_DEL_IDX)) {
-      fprintf(stderr,
-	      "@status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(): "\
-	      "send_msg() failed\n");
-      return 1;
-    }
 
     if (clients[i].req_sz == 0) {
       if (status_WAIT_DEL_IDX(i)) {
@@ -700,8 +707,15 @@ static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i)
 		"status_WAIT_DEL_IDX() failed\n");
 	return 1;
       }
-    } else 
+    } else {
+      if (send_msg(clients[i].sockfd, SER_REQ_DEL_IDX)) {
+	fprintf(stderr,
+		"@status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(): "\
+		"send_msg() failed\n");
+	return 1;
+      }
       clients[i].status = WAIT_DEL_IDX;
+    }
 
     printf(">>>>> SER_REQ_DEL_IDX sent\n");
 
@@ -736,6 +750,8 @@ static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i)
 
 static int status_WAIT_DEL_IDX(int i)
 {
+  unsigned char flag;
+  
   printf(">>>> ---> WAIT_DEL_IDX\n");
 
   if (receive_del_index_file(clients[i].sockfd, clients[i].req_sz)) {
@@ -763,13 +779,17 @@ static int status_WAIT_DEL_IDX(int i)
     return 1;
   }
 
-  if (send_hash_fss_info(clients[i].sockfd, HASH_FSS_INFO, 1)) {
+  if (send_hash_fss_info(clients[i].sockfd, HASH_FSS_INFO, 1, &flag)) {
     fprintf(stderr,
 	    "@status_WAIT_DEL_IDX(): send_hash_file_info() failed\n");
     return 1;
   }
 
-  clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
+  if (flag & SIZE0_SENT)
+    clients[i].status = WAIT_XXX;
+  else
+    clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
+  
   printf(">>>> clinets[%d] status set to ---> WAIT_MSG_CLI_REQ_HASH_FSS\n", i);
 
   /* if (reset_client(i)) { */
@@ -794,13 +814,10 @@ static int receive_line(int i, char *text, int len)
   int n;
 
   //TODO: A while() should be place here, within MAX_PATH_LEN
-  if ((n = read(clients[i].sockfd, text, len))) {
-    perror("@receive_line(): read failed");
-    return 1;
-  }
-  text[n] = 0;
+  n = read(clients[i].sockfd, text, len);
 
   printf(">>>> receive_line received %s\n", text);
+  
   if (n <= 0) {
     printf(">>>>clients[%d], %d disconnecting...    ",
 	   i, clients[i].sockfd); 
@@ -810,10 +827,11 @@ static int receive_line(int i, char *text, int len)
     clients[i].sockfd = -1;
 
     printf("done\n"); 
-
     return 2;
   }
-
+  
+  text[n] = 0;
+  
   return 0;
 }
 
@@ -856,16 +874,21 @@ static int set_fileinfo(int i, char *buf)
 static int broadcast(int except_index)
 {
   int i;
+  unsigned char flag;
   
   for (i = 0; i <= maxi; i++) {
     if (clients[i].sockfd < 0 || i == except_index)
       continue;
     else {
-      if (send_hash_fss_info(clients[i].sockfd, HASH_FSS_INFO, 0)) {
+      if (send_hash_fss_info(clients[i].sockfd, HASH_FSS_INFO, 0, &flag)) {
 	fprintf(stderr, "@broadcase: send_hash_file_info() failed\n");
 	return 1;
       }
-      clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
+      if (flag & SIZE0_SENT)
+	clients[i].status = WAIT_XXX;
+      else
+	clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS;
+      
       printf(">>>> client[%d], broadcasted\n", i); 
     }
   }
