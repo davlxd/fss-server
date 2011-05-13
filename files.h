@@ -69,7 +69,7 @@ int send_entryinfo_via_linenum(int sockfd, long linenum,
 int send_entryinfo(int sockfd, const char *fname,
 		   const char *prefix0, const char *prefix1,
 		   int reset_mtime, unsigned char *flag);
-
+int reuse_file(const char*, const char *, int *);
 int send_msg(int sockfd, const char *msg);
 
 /* receive... */
@@ -78,6 +78,9 @@ int receive_common_file(int sockfd, const char *rela_fname, off_t sz);
 int receive_file(int sockfd, const char *relaname, off_t size);
 int create_dir(const char *relafname);
 int remove_dir(const char *fname);
+
+int create_dir_literal(const char *rela_fname);
+int copy(const char*, const char *);
 
 int remove_files();
 int remove_del_index_file();

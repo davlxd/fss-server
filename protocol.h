@@ -37,6 +37,7 @@
 #define FIN "L"
 #define CLI_REQ_HASH_FSS_INFO "M"
 #define DIR_INFO "N"
+#define CHKSUM_INFO "O"
 
 
 // status 
@@ -49,7 +50,8 @@ enum {
   WAIT_FILE = 10,
   WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO = 12,
   WAIT_DEL_IDX_INFO_OR_ENTRY_INFO = 14,
-  WAIT_DEL_IDX = 16
+  WAIT_DEL_IDX = 16,
+  ENTRY_INFO_SENT = 18
 
 };
 

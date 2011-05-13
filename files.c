@@ -781,6 +781,56 @@ int send_entryinfo(int sockfd, const char *fname,
   return 0;
 }
 
+
+
+int reuse_file(const char *sha1_str, const char *rela_fname, int *reused)
+{
+  char fullpath[MAX_PATH_LEN]; // sha1.fss
+  char fullpath1[MAX_PATH_LEN]; // finfo.fss
+  char fullpath2[MAX_PATH_LEN]; //target file
+  char record[MAX_PATH_LEN]; //fullpath in finfo.fss, src file
+  int linenum;
+  
+  get_thefile(SHA1_FSS, fullpath);
+  get_thefile(FINFO_FSS, fullpath1);
+
+  if (search_line(fullpath, sha1_str, 42, &linenum)) {
+    fprintf(stderr, "@reuse_file(): search_line() failed\n");
+    return 1;
+  }
+
+  if (linenum < 0) {
+    *reused = 0;
+    return 0;
+  }
+
+  *reused = 1;
+  
+  if (create_dir_literal(rela_fname)) {
+    fprintf(stderr, "@reuse_file(): create_dir() failed\n");
+    return 1;
+  }
+    
+  if (get_line_via_linenum(fullpath1, linenum, record, MAX_PATH_LEN)) {
+    fprintf(stderr, "@reuse_file(): get_line_via_linenum failed\n");
+    return 1;
+  }
+
+  *fullpath2 = 0;
+  strncat(fullpath2, rootpath, strlen(rootpath));
+  connect_path(rela_fname, fullpath2);
+
+  if (copy(record, fullpath2)) {
+    fprintf(stderr, "@reuse_file(): copy() failed\n");
+    return 1;
+  }
+    
+
+  
+  return 0;
+}
+
+
 int send_msg(int sockfd, const char *msg)
 {
   if(write(sockfd, msg, strlen(msg)) < 0) {
@@ -927,6 +977,103 @@ int receive_file(int sockfd, const char *fname, off_t sz)
 
   return 0;
 }
+
+
+
+
+int create_dir_literal(const char *rela_fname)
+{
+
+  char fullpath[MAX_PATH_LEN];
+  char relaname[MAX_PATH_LEN];
+  struct stat statbuf;
+  char *token, *token1;
+  mode_t default_mode;
+
+  *fullpath = 0;
+  strncat(fullpath, rootpath, strlen(rootpath));
+
+  /* set default mode_t */
+  if (stat(fullpath, &statbuf) < 0) {
+    perror("@receive_common_file(): stat failed");
+    return 1;
+  }
+  default_mode = statbuf.st_mode;
+
+  *relaname = 0;
+  strncat(relaname, rela_fname, strlen(rela_fname));
+
+  /* the following code mkdir if specific dir dosen't exist
+   * token1 is next token of token,
+   * if token1 is NULL, so token should be a file name,
+   * then folowing  if-dir-exsist-judge-algorithm
+   * should not include this particular token, so escape while() */
+  token = strtok(relaname, "/");
+  token1 = strtok(NULL, "/");
+  while(token && token1) {
+    if (connect_path(token, fullpath)) {
+      fprintf(stderr, "@receive_common_file(): connect_path() failed\n");
+      return 1;
+    }
+    if (stat(fullpath, &statbuf) < 0) {
+      if (errno == ENOENT) {
+	if (mkdir(fullpath, default_mode) < 0) {
+	  perror("@receive_common_file(): mkdir() failed");
+	  return 1;
+	}
+      } else {
+	perror("@receive_common_file(): stat() failed\n");
+	return 1;
+      }
+    }
+    token = token1;
+    token1 = strtok(NULL, "/");
+  }
+  
+  return 0;
+  
+}
+
+
+
+int copy(const char *src, const char *dst)
+{
+  printf(">>>> in copy(), src--%s--, dst--%s--\n", src, dst);
+  
+  FILE *in, *out;
+  char buf[BUF_LEN];
+
+  if (!(in = fopen(src, "rb"))) {
+    perror("@copy(): fopen() failed");
+    return 1;
+  }
+
+  if (!(out = fopen(dst, "w+"))) {
+    perror("@copy(): fopen() failed");
+    return 1;
+  }
+
+  while(fgets(buf, BUF_LEN, in) != NULL)
+    if (fputs(buf, out) == EOF) {
+      perror("@copy() fputs() failed");
+      return 1;
+    }
+
+  if (ferror(in)) {
+    perror("@copy(): fgets() failed");
+    return 1;
+  }
+
+  
+
+  fflush(out);
+  fclose(in);
+  fclose(out);
+
+  return 0;
+
+}
+
 
 int create_dir(const char *relafname)
 {

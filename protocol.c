@@ -45,6 +45,7 @@ static int status_WAIT_FILE(int i);
 static int status_WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO(int i);
 static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i);
 static int status_WAIT_DEL_IDX(int i);
+static int status_ENTRY_INFO_SENT(int i);
 static int receive_line(int i, char *text, int len);
 static int set_fileinfo(int i, char *buf);
 
@@ -268,6 +269,15 @@ static int handle_client(int i)
     }
     break;
 
+  case ENTRY_INFO_SENT:
+    if(status_ENTRY_INFO_SENT(i)) {
+      fprintf(stderr,
+	      "@handle_client(): status_ENTRY_INFO_SENT\n");
+      return 1;
+    }
+    break;
+
+
 
   default:
     fprintf(stderr,
@@ -375,12 +385,16 @@ static int status_WAIT_XXX(int i)
       return 1;
 
     }
-    if (flag & SIZE0_SENT || flag & PREFIX1_SENT) {
-      clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM;
-    } else if (flag & PREFIX0_SENT) {
-      clients[i].line_num = linenum;
-      clients[i].status = WAIT_MSG_CLI_REQ_FILE;
-    } 
+
+    clients[i].line_num = linenum;
+    clients[i].status = ENTRY_INFO_SENT;
+    
+    /* if (flag & SIZE0_SENT || flag & PREFIX1_SENT) { */
+    /*   clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM; */
+    /* } else if (flag & PREFIX0_SENT) { */
+    /*   clients[i].line_num = linenum; */
+    /*   clients[i].status = WAIT_MSG_CLI_REQ_FILE; */
+    /* }  */
 
   } else if (strncmp(buf, DIR_INFO, strlen(DIR_INFO)) == 0) {
     if (handle_DIR_INFO(i, buf)) {
@@ -432,33 +446,120 @@ static int status_WAIT_XXX(int i)
 }
 
 
-static int handle_FILE_INFO(int i, char *buf)
+static int status_ENTRY_INFO_SENT(int i)
 {
-    lock = i;
-    if (set_fileinfo(i, buf+strlen(FILE_INFO))) {
+  printf(">>>> ---> WAIT_ENTRYH_INFO_SENT\n");
+
+  int rv;
+  unsigned char flag;
+  long linenum;
+  char buf[MAX_PATH_LEN];
+  
+  if ((rv = receive_line(i, buf, MAX_PATH_LEN)) == 1) {
+    fprintf(stderr, "@status_WAIT_ENTRY_INFO_SENT(): "\
+	    "receive_line() failed\n");
+    return 1;
+
+  } else if (rv == 2)
+    return 0;
+
+  if (strncmp(buf, DONE, strlen(buf)) == 0) {
+    if (reset_client(i)) {
       fprintf(stderr,
-	      "@handle_FILE_INFO(): set_fileinfo() failed\n");
+	      "@status_WAIT_ENTRY_INFO_SENT(): "
+	      "reset_client[%d] failed\n", i);
       return 1;
     }
-    printf(">>>> fileinfo setted\n");
-
-    if (clients[i].req_sz == 0 ) {
-      if (status_WAIT_FILE(i)) {
-	fprintf(stderr,
-		"@handle_FILE_INFO(): status_WAIT_FILE() failed\n");
-	return 1;
-      }
-    } else {
-      if (send_msg(clients[i].sockfd, SER_REQ_FILE)) {
-	fprintf(stderr,
-		"@handle_FILE_INFO(): send_msg() failed\n");
-	return 1;
-      }
-      clients[i].status = WAIT_FILE;
+    printf(">>>> client[%d] sent DONE\n", i); 
+      
+  } else if (strncmp(buf, LINE_NUM, strlen(LINE_NUM)) == 0) {
+    linenum = strtol(buf+strlen(LINE_NUM), NULL, 10);
+    if (linenum == 0) {
+      perror("@status_WAIT_ENTRY_INFO_SENT(): strtol() failed");
+      return 1;
+    }
+    if (send_entryinfo_via_linenum(clients[i].sockfd, linenum,
+				   FILE_INFO, DIR_INFO, &flag)) {
+      fprintf(stderr,
+	      "@status_WAIT_ENTRY_INFO_SENT(): "
+	      "send_entryinfo_via_linenum() failed\n");
+      return 1;
     }
 
-    printf(">>>> SER_REQ_FILE sent\n"); 
+    clients[i].line_num = linenum;
+    clients[i].status = ENTRY_INFO_SENT;
+    
+    /* if (flag & PREFIX1_SENT || flag & SIZE0_SENT) { */
+    /*   clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM; */
+    /* } */
+    /* else if (flag & PREFIX0_SENT) { */
+    /*   clients[i].line_num = linenum; */
+    /*   clients[i].status = WAIT_MSG_CLI_REQ_FILE; */
+    /* } */
+  } else if (strncmp(buf, CLI_REQ_FILE, strlen(CLI_REQ_FILE)) == 0) {
+    if (send_file_via_linenum(clients[i].sockfd, clients[i].line_num)) {
+      fprintf(stderr,
+	      "@status_WAIT_ENTRY_INFO_SENT(): send_file() failed\n");
+      return 1;
+    }
+    clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM;
+    printf(">>>> FILE %s sent\n", clients[i].rela_name);
+      
+  } else {
+    printf("WARNING: client[%d] current status " \
+	   "WAIT_MSG_DONE_OR_LINE_NUM_OR_FILE_INFO "\
+	   "received invalid message: %s\n",
+	   i, buf);
+    return 0;
+  }
+  
+  return 0;
 
+}
+
+static int handle_FILE_INFO(int i, char *buf)
+{
+  lock = i;
+  if (set_fileinfo(i, buf+strlen(FILE_INFO))) {
+    fprintf(stderr,
+	    "@handle_FILE_INFO(): set_fileinfo() failed\n");
+    return 1;
+  }
+  printf(">>>> fileinfo setted\n");
+
+  if (clients[i].req_sz == 0 ) {
+    if (status_WAIT_FILE(i)) {
+      fprintf(stderr,
+	      "@handle_FILE_INFO(): status_WAIT_FILE() failed\n");
+      return 1;
+    }
+    return 0;
+  }
+
+  int reused = 0;
+  if (reuse_file(clients[i].sha1_str, clients[i].rela_name, &reused)) {
+    fprintf(stderr, "@status_WAIT_ENTRY_INFO(): reuse_file() failed\n");
+    return 1;
+  }
+  if (reused) {
+    if (send_msg(clients[i].sockfd, SER_RECEIVED)) {
+      fprintf(stderr,
+	      "@status_WAIT_FILE(): send_msg() failed\n");
+      return 1;
+    }
+    clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO;
+    printf(">>>> SER_RECEIVED sent to client[%d]\n", i); 
+    return 0;
+  
+  }
+    
+  if (send_msg(clients[i].sockfd, SER_REQ_FILE)) {
+    fprintf(stderr,
+	    "@handle_FILE_INFO(): send_msg() failed\n");
+    return 1;
+  }
+  clients[i].status = WAIT_FILE;
+  printf(">>>> SER_REQ_FILE sent\n");
 
   return 0;
 }
@@ -562,14 +663,17 @@ static int status_WAIT_MSG_DONE_OR_LINE_NUM(int i)
 	      "send_entryinfo_via_linenum() failed\n");
       return 1;
     }
+
+    clients[i].line_num = linenum;
+    clients[i].status = ENTRY_INFO_SENT;
     
-    if (flag & PREFIX1_SENT || flag & SIZE0_SENT) {
-      clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM;
-    }
-    else if (flag & PREFIX0_SENT) {
-      clients[i].line_num = linenum;
-      clients[i].status = WAIT_MSG_CLI_REQ_FILE;
-    }
+    /* if (flag & PREFIX1_SENT || flag & SIZE0_SENT) { */
+    /*   clients[i].status = WAIT_MSG_DONE_OR_LINE_NUM; */
+    /* } */
+    /* else if (flag & PREFIX0_SENT) { */
+    /*   clients[i].line_num = linenum; */
+    /*   clients[i].status = WAIT_MSG_CLI_REQ_FILE; */
+    /* } */
 
       
   } else {
@@ -823,7 +927,7 @@ static int receive_line(int i, char *text, int len)
 	   i, clients[i].sockfd); 
     
     reset_client(i);
-    if (0 > close(client[i].sockfd)) {
+    if (0 > close(clients[i].sockfd)) {
       perror("@receive_line(): close(client[i].sockfd) failed");
       return 1;
     }

@@ -49,6 +49,9 @@
 #define PORT 3375
 #define PORT_STR "3375"
 
+#define MAX(a,b) ((a)>(b)?(a):(b))
+#define MIN(a,b) ((a)<(b)?(a):(b))
+
 
 
 #endif

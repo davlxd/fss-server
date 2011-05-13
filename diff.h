@@ -31,6 +31,11 @@
 int diff(const char *fin0, const char *fin1,
 	 const char *fout0, const char *fout1, const char *fout2);
 
+int get_line_via_linenum(const char *fname, long linenum,
+			 char *buffer, int maxlen);
+int search_line(const char *fname, const char *target, int maxlen,
+		int *linenum);
+
 
 
 #endif
