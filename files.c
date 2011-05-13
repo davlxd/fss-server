@@ -1041,6 +1041,7 @@ int copy(const char *src, const char *dst)
   printf(">>>> in copy(), src--%s--, dst--%s--\n", src, dst);
   
   FILE *in, *out;
+  size_t nread, nwrite;
   char buf[BUF_LEN];
 
   if (!(in = fopen(src, "rb"))) {
@@ -1053,17 +1054,18 @@ int copy(const char *src, const char *dst)
     return 1;
   }
 
-  while(fgets(buf, BUF_LEN, in) != NULL)
-    if (fputs(buf, out) == EOF) {
-      perror("@copy() fputs() failed");
+  while ((nread = fread(buf, sizeof(char), (size_t)BUF_LEN, in)) > 0) {
+    if ((nwrite = fwrite(buf, sizeof(char), nread, out)) < 0) {
+      perror("@copy(): fwrite() failed");
       return 1;
     }
+  }
+
 
   if (ferror(in)) {
     perror("@copy(): fgets() failed");
     return 1;
   }
-
   
 
   fflush(out);
