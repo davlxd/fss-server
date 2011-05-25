@@ -823,7 +823,7 @@ static int receive_line(int i, char *text, int len)
 	   i, clients[i].sockfd); 
     
     reset_client(i);
-    if (0 > close(client[i].sockfd)) {
+    if (0 > close(clients[i].sockfd)) {
       perror("@receive_line(): close(client[i].sockfd) failed");
       return 1;
     }
