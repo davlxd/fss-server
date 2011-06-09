@@ -1,0 +1,23 @@
+KEY:Path found
+KEY:Path -> VALUE:/home/i/for-sync
+>>>>> IN update_files()
+
+>>>> block at select()  
+>>>> select() returns
+>>>> just send --H5CD2A333ECB96F56DC5905D66D3632ADC7FF0540
+.fss/hash.fss
+1306618936
+2952--
+>>>> client[0], 4, connected, hash.fss's size sent
+>>>> lock set to 0
+
+>>>> block at select()  
+>>>> select() returns
+>>>> clinets[0].sockfd readable
+>>>> client[0].sockfd readable, add hold the lock
+>>>> ---> WAIT_MSG_CLI_REQ_HASH_FSS
+>>>> receive_line received ss
+>>>>clients[0], 4 disconnecting...    >>>> client[0]           reset
+done
+
+>>>> block at select()  

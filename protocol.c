@@ -916,7 +916,8 @@ static int status_WAIT_DEL_IDX(int i)
 static int receive_line(int i, char *text, int len)
 {
   int n;
-
+  memset(text, 0, len);
+  
   //TODO: A while() should be place here, within MAX_PATH_LEN
   n = read(clients[i].sockfd, text, len);
 
