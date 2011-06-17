@@ -21,7 +21,6 @@
 
 #include "sock.h"
 #include "protocol.h"
-#include "client.h"
 #include "params.h"
 #include "files.h"
 #include <sys/select.h>

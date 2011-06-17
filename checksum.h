@@ -1,5 +1,4 @@
 /*
- * maintain Client Struct, header file
  *
  * Copyright (c) 2010, 2011 lxd <edl.eppc@gmail.com>
  * 
@@ -18,23 +17,21 @@
  * You should have received a copy of the GNU General Public License
  * along with fss.  If not, see <http://www.gnu.org/licenses/>.
  */
-
-#ifndef _FSS_CLIENT_H_
-#define _FSS_CLIENT_H_
+#ifndef _FSS_CHECKSUM_H_
+#define _FSS_CHECKSUM_H_
 
 #include "fss.h"
 
-typedef struct client
-{
-  int sockfd;
-  int status;
+uint32_t rolling_checksum(char *buf, int32_t len);
 
-  long line_num; // for send file
-
-  char sha1_str[41];
-  char rela_name[MAX_PATH_LEN];
-  off_t req_sz;
-
-} client;
+// compute rolling hash and sha1 checksum of block, send it to fd
+int send_blk_checksums(const char *pathname, int sockfd, int block_size,
+		   const char *prefix);
 
 #endif
+
+  
+  
+  
+    
+    

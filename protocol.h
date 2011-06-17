@@ -37,7 +37,11 @@
 #define FIN "L"
 #define CLI_REQ_HASH_FSS_INFO "M"
 #define DIR_INFO "N"
-#define CHKSUM_INFO "O"
+#define BLK_CHKSUM "O"
+#define CLI_REQ_BLK_CHKSUM "P"
+#define BLK "Q"
+#define CLI_REQ_BLK "R"
+#define SER_RECEIVED_BLK "T"
 
 
 // status 
@@ -51,8 +55,10 @@ enum {
   WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO = 12,
   WAIT_DEL_IDX_INFO_OR_ENTRY_INFO = 14,
   WAIT_DEL_IDX = 16,
-  ENTRY_INFO_SENT = 18
-
+  ENTRY_INFO_SENT = 18,
+  WAIT_BLK_OR_DONE = 20,
+  WAIT_MSG_CLI_REQ_BLK = 22,
+  WAIT_MSG_DONE_OR_CLI_REQ_BLK_OR_LINE_NUM = 24
 };
 
 int server_polling(int *listenfd);

@@ -19,7 +19,6 @@
  * along with fss.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "fss.h"
-#include "client.h"
 #include "files.h"
 #include "protocol.h"
 
@@ -46,6 +45,10 @@ static int status_WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO(int i);
 static int status_WAIT_DEL_IDX_INFO_OR_ENTRY_INFO(int i);
 static int status_WAIT_DEL_IDX(int i);
 static int status_ENTRY_INFO_SENT(int i);
+static int status_WAIT_BLK_OR_DONE(int i);
+static int status_WAIT_MSG_CLI_REQ_BLK(int i);
+static int status_WAIT_MSG_DONE_OR_CLI_REQ_BLK_OR_LINE_NUM(int i);
+    
 static int receive_line(int i, char *text, int len);
 static int set_fileinfo(int i, char *buf);
 
@@ -270,13 +273,36 @@ static int handle_client(int i)
     break;
 
   case ENTRY_INFO_SENT:
-    if(status_ENTRY_INFO_SENT(i)) {
+    if (status_ENTRY_INFO_SENT(i)) {
       fprintf(stderr,
 	      "@handle_client(): status_ENTRY_INFO_SENT\n");
       return 1;
     }
     break;
 
+  case WAIT_BLK_OR_DONE:
+    if (status_WAIT_BLK_OR_DONE(i)) {
+      fprintf(stderr,
+	      "@handle_client(): status_WAIT_BLK_OR_DONE() failed\n");
+      return 1;
+    }
+    break;
+    
+  case WAIT_MSG_CLI_REQ_BLK:
+    if (status_WAIT_MSG_CLI_REQ_BLK(i)) {
+      fprintf(stderr,
+	      "@handle_client(): status_WAIT_MSG_CLI_REQ_BLK() failed\n");
+      return 1;
+    }
+    break;
+
+  case WAIT_MSG_DONE_OR_CLI_REQ_BLK_OR_LINE_NUM:
+    if (status_WAIT_MSG_DONE_OR_CLI_REQ_BLK_OR_LINE_NUM(i)) {
+      fprintf(stderr,
+	      "@handle_client(): status_WAIT_MSG_DONE_OR_CLI_REQ_BLK_OR_LINE_NUM() failed\n");
+      return 1;
+    }
+    break;
 
 
   default:
@@ -538,20 +564,40 @@ static int handle_FILE_INFO(int i, char *buf)
 
   int reused = 0;
   if (reuse_file(clients[i].sha1_str, clients[i].rela_name, &reused)) {
-    fprintf(stderr, "@status_WAIT_ENTRY_INFO(): reuse_file() failed\n");
+    fprintf(stderr, "@handle_FILE_INFO(): reuse_file() failed\n");
     return 1;
   }
   if (reused) {
     if (send_msg(clients[i].sockfd, SER_RECEIVED)) {
       fprintf(stderr,
-	      "@status_WAIT_FILE(): send_msg() failed\n");
+	      "@handle_FILE_INFO(): send_msg() failed\n");
       return 1;
     }
     clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO;
     printf(">>>> SER_RECEIVED sent to client[%d]\n", i); 
     return 0;
-  
   }
+
+  int fragable;
+  char frag_file_name[MAX_PATH_LEN];
+  if (frag_file(clients[i].rela_name, clients[i].req_sz, FRAG_THRESHOLD,
+		&fragable, frag_file_name)) {
+    fprintf(stderr, "@handle_FILE_INFO(): frag_file() failed\n");
+    return 1;
+  }
+
+  if (fragable) {
+    if (send_blk_checksums(frag_file_name, clients[i].sockfd,
+			   BLOCK_SIZE, BLK_CHKSUM)) {
+
+      fprintf(stderr, "@hand_FILE_INFO(): send_blk_checksums() failed\n");
+      return 1;
+    }
+    clients[i].status = WAIT_BLK_OR_DONE;
+    printf(">>>> blk checksums sent, status set to WAIT_BOK_OR_DONE\n");
+    return 0;
+  }
+  
     
   if (send_msg(clients[i].sockfd, SER_REQ_FILE)) {
     fprintf(stderr,
@@ -585,6 +631,29 @@ static int handle_DIR_INFO(int i, char *buf)
     }
 
     clients[i].status = WAIT_MSG_CLI_REQ_HASH_FSS_INFO_OR_ENTRY_INFO;
+
+
+  return 0;
+}
+
+
+static int status_WAIT_BLK_OR_DONE(int i)
+{
+
+
+  return 0;
+}
+
+
+static int status_WAIT_MSG_CLI_REQ_BLK(int i)
+{
+
+
+  return 0;
+}
+
+static int status_WAIT_MSG_DONE_OR_CLI_REQ_BLK_OR_LINE_NUM(int i)
+{
 
 
   return 0;

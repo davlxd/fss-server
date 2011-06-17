@@ -40,7 +40,11 @@
 
 #define FSS_DIR ".fss"
 
+
 #define INCLUDE_HIDDEN 0
+
+#define FRAG_THRESHOLD (1024*512)
+#define BLOCK_SIZE 700
 
 #define MAX_PATH_LEN 1024
 #define BUF_LEN 4096
@@ -51,6 +55,20 @@
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #define MIN(a,b) ((a)<(b)?(a):(b))
+
+
+typedef struct client
+{
+  int sockfd;
+  int status;
+
+  long line_num; // for send file
+
+  char sha1_str[41];
+  char rela_name[MAX_PATH_LEN];
+  off_t req_sz;
+
+} client;
 
 
 

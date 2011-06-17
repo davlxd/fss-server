@@ -69,7 +69,11 @@ int send_entryinfo_via_linenum(int sockfd, long linenum,
 int send_entryinfo(int sockfd, const char *fname,
 		   const char *prefix0, const char *prefix1,
 		   int reset_mtime, unsigned char *flag);
-int reuse_file(const char*, const char *, int *);
+int reuse_file(const char *sha1, const char *relafilename, int *reused);
+// fragment whole file to blocks
+int frag_file(const char *relaname, off_t req_sz,
+	      off_t threshold, int *fragable, char *filename);
+
 int send_msg(int sockfd, const char *msg);
 
 /* receive... */

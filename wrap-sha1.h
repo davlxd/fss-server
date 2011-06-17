@@ -41,6 +41,8 @@ int compute_hash(const char *fname, const char *root_path,
 int sha1_file(FILE *file, char *digest);
 int sha1_str(char *text, char *digest);
 
+int sha1_digest_of_buffer(char *buf, size_t len, char *digest);
+
 
 
 

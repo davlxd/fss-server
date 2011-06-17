@@ -41,6 +41,7 @@ static int fn(const char *fname, const struct stat *sb, int flag,
 /* the following funcions do explict path connecions
  * assume fpath is big enough */
 static int get_thefile(const char*, char *);
+static int get_lasttoken_from_path(const char *path, char *token);
 
 // make sure path0 is large enough
 static int connect_path(const char *, char *);
@@ -825,7 +826,60 @@ int reuse_file(const char *sha1_str, const char *rela_fname, int *reused)
     return 1;
   }
     
+  return 0;
+}
 
+int frag_file(const char *relaname, off_t req_sz,
+	      off_t threshold, int *fragable, char *filename)
+{
+  if (req_sz < threshold) {
+    *fragable = 0;
+    return 0;
+  }
+    
+  FILE *sha1_file;
+  struct stat sb;
+  char relaname_local[MAX_PATH_LEN];
+  char buf[MAX_PATH_LEN];
+  char sha1_path[MAX_PATH_LEN];
+  
+  get_thefile(SHA1_FSS, sha1_path);
+  sha1_file = fopen(sha1_path, "rv");
+  if (!sha1_file) {
+    perror("@frag_file(): fopen() failed");
+    return 1;
+  }
+
+  while (fgets(buf, MAX_PATH_LEN, sha1_file) != NULL) {
+    buf[strlen(buf)-1] = 0;
+    
+    if (stat(buf, &sb) < 0)  {
+      if (errno == ENOENT)
+	continue;
+      else {
+	perror ("@frag_file(): stat() failed");
+	return 1;
+      }
+    }
+
+    if (sb.st_size < threshold)
+      continue;
+
+    if (get_rela_path(buf, relaname_local)) {
+      fprintf(stderr, "@frag_file(): get_rela_path() failed");
+      return 1;
+    }
+
+    if (strncmp(relaname, relaname_local, strlen(relaname_local)) == 0) {
+      *fragable = 1;
+      if (!strncpy(filename, buf, strlen(buf)+1)) {
+	perror("@frag_file(): strncpy() failed");
+	return 1;
+      }
+      return 0;
+    } 
+
+  }
   
   return 0;
 }
@@ -1077,6 +1131,8 @@ int copy(const char *src, const char *dst)
 }
 
 
+
+
 int create_dir(const char *relafname)
 {
   char fullpath[MAX_PATH_LEN];
@@ -1196,4 +1252,26 @@ static int get_thefile(const char *name, char *fpath)
   }
   
   return 0;
+}
+
+static int get_lasttoken_from_path(const char *path, char *name)
+{
+  char *token, *token1;
+  char pathname[MAX_PATH_LEN];
+  strncpy(pathname, path, strlen(path)+1);
+  
+  token = strtok(pathname, "/");
+  token1 = strtok(NULL, "/");
+  while(token && token1) {
+    token = token1;
+    token1 = strtok(NULL, "/");
+  }
+
+  if (!token)
+    token = "";
+  
+  strncpy(name, token, strlen(token)+1);
+
+  return 0;
+
 }
