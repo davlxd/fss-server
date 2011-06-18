@@ -25,8 +25,8 @@
 uint32_t rolling_checksum(char *buf, int32_t len);
 
 // compute rolling hash and sha1 checksum of block, send it to fd
-int send_blk_checksums(const char *pathname, int sockfd, int block_size,
-		   const char *prefix);
+int send_blk_checksums(int sockfd, const char *pathname, 
+		       off_t block_size, const char *prefix);
 
 #endif
 

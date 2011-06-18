@@ -42,8 +42,8 @@ uint32_t rolling_checksum(char *buf1, int32_t len)
     return (s1 & 0xffff) + (s2 << 16);
 }
 
-int send_blk_checksums(const char *pathname, int sockfd, int block_size,
-		   const char *prefix)
+int send_blk_checksums(int sockfd, const char *pathname, off_t block_size,
+		       const char *prefix)
 {
   FILE *in;
   size_t len;
@@ -63,7 +63,8 @@ int send_blk_checksums(const char *pathname, int sockfd, int block_size,
 
   //TODO:printf off_t as unsigned long long here
 
-  len = snprintf(record, MAX_PATH_LEN, "%s%"PRIu64"\n", prefix, block_num);
+  len = snprintf(record, MAX_PATH_LEN, "%s\n%"PRIu64"\n%"PRIu64"\n",
+		 prefix, (uint64_t)block_size, (uint64_t)block_num);
 
   if (write(sockfd, record, len) < 0) {
     perror("@send_checksums(): write() to sockfd failed");
