@@ -63,7 +63,7 @@ int send_blk_checksums(int sockfd, const char *pathname, off_t block_size,
 
   //TODO:printf off_t as unsigned long long here
 
-  len = snprintf(record, MAX_PATH_LEN, "%s\n%"PRIu64"\n%"PRIu64"\n",
+  len = snprintf(record, MAX_PATH_LEN, "%s\n%"PRIu64"\n%"PRIu64"\n\n",
 		 prefix, (uint64_t)block_size, (uint64_t)block_num);
 
   if (write(sockfd, record, len) < 0) {
