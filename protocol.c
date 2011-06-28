@@ -587,7 +587,8 @@ static int handle_FILE_INFO(int i, char *buf)
   }
 
   if (fragable) {
-    if (send_blk_checksums(frag_file_name, clients[i].sockfd,
+    if (send_blk_checksums(clients[i].sockfd, frag_file_name,
+			   clients[i].rela_name, 
 			   BLOCK_SIZE, BLK_CHKSUM)) {
 
       fprintf(stderr, "@hand_FILE_INFO(): send_blk_checksums() failed\n");

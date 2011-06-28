@@ -13,7 +13,7 @@ int main(int argc, char **argv)
 
   fd = open("../output", O_WRONLY|O_CREAT, 0755); 
 
-  send_blk_checksums(fd, "../input", 700, "M");
+  send_blk_checksums(fd, "../input", "input", 700, "M");
   
   close(fd);
 

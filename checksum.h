@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2010, 2011 lxd <edl.eppc@gmail.com>
+ * Copyright (c) 2010, 2011 lxd <i@lxd.me>
  * 
  * This file is part of File Synchronization System(fss).
  *
@@ -25,7 +25,8 @@
 uint32_t rolling_checksum(char *buf, int32_t len);
 
 // compute rolling hash and sha1 checksum of block, send it to fd
-int send_blk_checksums(int sockfd, const char *pathname, 
+int send_blk_checksums(int sockfd, const char *pathname,
+		       const char *relaname, 
 		       off_t block_size, const char *prefix);
 
 #endif
